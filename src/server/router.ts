@@ -1,29 +1,24 @@
 import { Request, Response, Router as ExpressRouter, IRouterMatcher } from 'express';
-import { Server } from './index'
+import { AnySchema as JoiSchema } from 'joi'
 import { ILogger } from 'the-logger'
 import { Promise, Resolvable } from 'the-promise';
+import { Server, Middleware } from './index'
 import { RouterError } from './router-error';
 import { RouterScope } from './router-scope';
-import { Middleware } from './index';
-
-import joi from 'joi';
-import { AnySchema as JoiSchema } from 'joi'
 
 export type Handler = (req : Request, res : Response) => Resolvable<any>;
 
-export class Router<TContext> {
+export class Router {
     
-    private _server : Server<TContext>;
     private _logger : ILogger
     private _isDev : boolean
     private _router : ExpressRouter;
     private _scope : RouterScope;
 
-    constructor(server : Server<TContext>, router : ExpressRouter, logger : ILogger, scope : RouterScope)
+    constructor(isDev: boolean, router : ExpressRouter, logger : ILogger, scope : RouterScope)
     {
-        this._server = server;
         this._logger = logger;
-        this._isDev = server.isDev;
+        this._isDev = isDev;
         this._router = router;
         this._scope = scope;
     }
@@ -36,32 +31,32 @@ export class Router<TContext> {
         this._scope.middlewares.push(value);
     }
 
-    get(url : string, handler: Handler) : RouteWrapper<TContext>
+    get(url : string, handler: Handler) : RouteWrapper
     {
         return this._setupRoute(url, handler, this._router.get);
     }
 
-    post(url : string, handler: Handler) : RouteWrapper<TContext>
+    post(url : string, handler: Handler) : RouteWrapper
     {
         return this._setupRoute(url, handler, this._router.post);
     }
 
-    put(url : string, handler: Handler) : RouteWrapper<TContext>
+    put(url : string, handler: Handler) : RouteWrapper
     {
         return this._setupRoute(url, handler, this._router.put);
     }
 
-    delete(url : string, handler: Handler) : RouteWrapper<TContext>
+    delete(url : string, handler: Handler) : RouteWrapper
     {
         return this._setupRoute(url, handler, this._router.delete);
     }
 
-    head(url : string, handler: Handler) : RouteWrapper<TContext>
+    head(url : string, handler: Handler) : RouteWrapper
     {
         return this._setupRoute(url, handler, this._router.head);
     }
 
-    options(url : string, handler: Handler) : RouteWrapper<TContext>
+    options(url : string, handler: Handler) : RouteWrapper
     {
         return this._setupRoute(url, handler, this._router.options);
     }
@@ -74,10 +69,10 @@ export class Router<TContext> {
         throw new RouterError(message, 400);
     }
 
-    private _setupRoute<T>(url : string, handler: Handler, matcher: IRouterMatcher<T>) : RouteWrapper<TContext>
+    private _setupRoute<T>(url : string, handler: Handler, matcher: IRouterMatcher<T>) : RouteWrapper
     {
-        const routeHandler = new RouteHandler<TContext>(this._logger, this._isDev);
-        const routeWrapper = new RouteWrapper<TContext>(routeHandler);
+        const routeHandler = new RouteHandler(this._logger, this._isDev);
+        const routeWrapper = new RouteWrapper(routeHandler);
         matcher.bind(this._router)(url, (req, res) => {
             routeHandler.handle(req, res, handler)
         })
@@ -86,7 +81,7 @@ export class Router<TContext> {
     
 }
 
-class RouteHandler<TContext> {
+class RouteHandler {
 
     private _logger : ILogger
     private _isDev : boolean
@@ -183,11 +178,11 @@ class RouteHandler<TContext> {
 
 }
 
-export class RouteWrapper<TContext> {
+export class RouteWrapper {
 
-    private _handler: RouteHandler<TContext>;
+    private _handler: RouteHandler;
 
-    constructor(handler: RouteHandler<TContext>)
+    constructor(handler: RouteHandler)
     {
         this._handler = handler;
     }

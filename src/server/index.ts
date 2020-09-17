@@ -6,17 +6,14 @@ import path from 'path';
 import fs from 'fs';
 import _ from 'the-lodash';
 import { ILogger } from 'the-logger'
-import { RouterError } from './router-error';
 import { Router } from './router';
 import { RouterScope } from './router-scope';
 
 import dotenv from 'dotenv';
 dotenv.config();
 
-import joi from 'joi';
-import { AnySchema } from 'joi'
-
-export type RouterFunc<TContext> = (builder: Router<TContext>) => void;
+export type RouterFunc<TContext> = (router: Router, context: TContext) => void;
+export type ExpressAppFunc = (app : Express) => void;
 
 export type Middleware = (req : Request, res : Response, next : (error: any) => void) => void;
 
@@ -25,10 +22,11 @@ export class Server<TContext>
     private _context : TContext;
     private _app : Express;
     private _httpServer? : HttpServer;
-    public isDev = false;
+    private _isDev = false;
     private _logger : ILogger;
     private _port : number;
     private _routersDir : string;
+    private _appInitCb? : ExpressAppFunc;
 
     constructor(logger: ILogger, context : TContext, port : number, routersDir : string)
     {
@@ -37,38 +35,38 @@ export class Server<TContext>
         this._routersDir = routersDir;
         this._port = port;
         this._app = express();
-        this.isDev = (process.env.NODE_ENV === 'development');
+        this._isDev = (process.env.NODE_ENV === 'development');
     }
 
     get logger() {
         return this._logger;
     }
 
+    get context() {
+        return this._context;
+    }
+
     get httpServer() : HttpServer {
         return this._httpServer!;
     }
 
+    initializer(cb : ExpressAppFunc) {
+        this._appInitCb = cb;
+    }
+
     run()
     {
-        if (this.isDev)
+        if (this._isDev)
         {
             this._app.use(morgan('dev'))
         }
 
         this._app.use(express.json({limit: '10mb'}));
 
-        // const session = {
-        //     secret: process.env.SESSION_SECRET,
-        //     cookie: {},
-        //     resave: false,
-        //     saveUninitialized: false
-        // };
-
-        // if (this._app.get('env') === 'production') {
-        //     session.cookie.secure = true;
-        // }
-
-        // this._app.use(expressSession(session));
+        if (this._appInitCb)
+        {
+            this._appInitCb!(this._app);
+        }
 
         this._loadRouters();
 
@@ -140,24 +138,10 @@ export class Server<TContext>
         const logger = this.logger.sublogger("Router_" + name);
 
         const routerScope = new RouterScope();
-        const router = new Router(this, expressRouter, logger, routerScope);
+        const router = new Router(this._isDev, expressRouter, logger, routerScope);
 
-        routerModuleFunc(router);
+        routerModuleFunc(router, this.context);
 
-        // const routerContext = {
-        //     logger: logger,
-        //     app: this._app,
-        //     context: this._context,
-        //     // dataStore: this._context.dataStore,
-        //     router: wrappedRouter,
-        //     reportError: (statusCode: number, message: string) => {
-        //         throw new RouterError(message, statusCode);
-        //     },
-        //     reportUserError: (message: string) => {
-        //         throw new RouterError(message, 400);
-        //     }
-        // }
-        
         this._app.use(routerScope.url, routerScope.middlewares, expressRouter);
     }
 

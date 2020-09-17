@@ -4,16 +4,20 @@ import { Promise } from 'the-promise';
 
 import Joi from 'joi';
 
-export default function(router: Router<Context>) {
+export default function(router: Router, context: Context) {
     router.url("/")
 
     router.get('/version', (req, res) => {
         return Promise.resolve(1234);
     })
+
+    router.get('/name', (req, res) => {
+        return context.name;
+    })
 }
 
 
-export function router2(router: Router<Context>) {
+export function router2(router: Router) {
     router.url("/")
 
     router.post('/bar', (req, res) => {
@@ -28,8 +32,7 @@ export function router2(router: Router<Context>) {
         ;
 }
 
-
-export function router3(router: Router<Context>) {
+export function router3(router: Router, context: Context) {
     router.url("/error")
 
     router.delete('/five-hundred', (req, res) => {

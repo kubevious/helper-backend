@@ -1,3 +1,3 @@
 export class Context {
-    public name: string = 'abcd';
+    public name: string = 'foo-bar';
 }

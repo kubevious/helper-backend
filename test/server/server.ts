@@ -4,7 +4,6 @@ import { setupLogger, LoggerOptions } from 'the-logger';
 import { Server } from '../../src';
 import { Context } from './context';
 import path from 'path';
-import {Promise} from 'the-promise';
 import axios from 'axios';
 
 const loggerOptions = new LoggerOptions()
@@ -30,20 +29,21 @@ describe('server', () => {
     });
 
     it('case-01', () => {
-        return Promise.timeout(10)
-            .then(() => {
-                return axios.get(`http://localhost:${PORT}/version`);
-            })
+        return axios.get(`http://localhost:${PORT}/version`)
             .then(result => {
                 should(result.data).be.equal(1234);
             })
     });
 
-    it('body-validation-pass', () => {
-        return Promise.timeout(10)
-            .then(() => {
-                return axios.post(`http://localhost:${PORT}/bar`, { foo: 'bar', age: 1234 });
+    it('case-02', () => {
+        return axios.get(`http://localhost:${PORT}/name`)
+            .then(result => {
+                should(result.data).be.equal('foo-bar');
             })
+    });
+
+    it('body-validation-pass', () => {
+        return axios.post(`http://localhost:${PORT}/bar`, { foo: 'bar', age: 1234 })
             .then(result => {
                 should(result).be.ok();
                 should(result.data).be.equal(8888);
@@ -52,10 +52,7 @@ describe('server', () => {
 
     it('body-validation-fail', () => {
         let errorReceived : any;
-        return Promise.timeout(10)
-            .then(() => {
-                return axios.post(`http://localhost:${PORT}/bar`, { xx: '1234' });
-            })
+        return axios.post(`http://localhost:${PORT}/bar`, { xx: '1234' })
             .catch(reason => {
                 errorReceived = reason;
             })
@@ -67,10 +64,7 @@ describe('server', () => {
 
     it('five-hindred-error', () => {
         let errorReceived : any;
-        return Promise.timeout(10)
-            .then(() => {
-                return axios.delete(`http://localhost:${PORT}/error/five-hundred`);
-            })
+        return axios.delete(`http://localhost:${PORT}/error/five-hundred`)
             .catch(reason => {
                 errorReceived = reason;
             })
@@ -82,10 +76,7 @@ describe('server', () => {
 
     it('report-error-api', () => {
         let errorReceived : any;
-        return Promise.timeout(10)
-            .then(() => {
-                return axios.options(`http://localhost:${PORT}/error/another-error`);
-            })
+        return axios.options(`http://localhost:${PORT}/error/another-error`)
             .catch(reason => {
                 errorReceived = reason;
             })
