@@ -3,34 +3,33 @@ import { Server } from './index'
 import { ILogger } from 'the-logger'
 import { Promise, Resolvable } from 'the-promise';
 import { RouterError } from './router-error';
+import { RouterScope } from './router-scope';
 
 import joi from 'joi';
 import { AnySchema as JoiSchema } from 'joi'
 
 export type Handler = (req : Request, res : Response) => Resolvable<any>;
 
-export class RouterWrapper<TContext> {
+export class Router<TContext> {
     
     private _server : Server<TContext>;
     private _logger : ILogger
     private _isDev : boolean
     private _router : ExpressRouter;
     private _url : string = '/';
+    private _scope : RouterScope;
 
-    constructor(server : Server<TContext>, router : ExpressRouter, logger : ILogger)
+    constructor(server : Server<TContext>, router : ExpressRouter, logger : ILogger, scope : RouterScope)
     {
         this._server = server;
         this._logger = logger;
         this._isDev = server.isDev;
         this._router = router;
-    }
-
-    getUrl() : string {
-        return this._url;
+        this._scope = scope;
     }
 
     url(value: string) {
-        this._url = value;
+        this._scope.url = value;
     }
 
     get(url : string, handler: Handler) : RouteWrapper<TContext>

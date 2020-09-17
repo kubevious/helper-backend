@@ -1,2 +1,2 @@
 export { Server } from './server';
-export { RouterWrapper } from './server/router-wrapper';
+export { Router } from './server/router';

@@ -14,24 +14,19 @@ const logger = setupLogger('test', loggerOptions);
 
 const PORT = 9999;
 
-let globalServer : Server<Context>;
-
-function makeServer() : Server<Context>
-{
-    let routersPath = path.join(__dirname, 'routers');
-    let server = new Server(logger, new Context(), PORT, routersPath);
-    server.run();
-    return server;
-}
+let globalServer : Server<Context> | null;
 
 describe('server', () => {
 
     beforeEach(() => {
-        globalServer = makeServer();
+        let routersPath = path.join(__dirname, 'routers');
+        globalServer = new Server(logger, new Context(), PORT, routersPath);
+        globalServer.run();
     });
     
     afterEach(() => {
-        globalServer.close();
+        globalServer!.close();
+        globalServer = null;
     });
 
     it('case-01', () => {
@@ -67,6 +62,21 @@ describe('server', () => {
             .then(() => {
                 should(errorReceived).be.ok();
                 should(errorReceived.response.status).be.equal(400);
+            })
+    });
+
+    it('five-hindred-error', () => {
+        let errorReceived : any;
+        return Promise.timeout(10)
+            .then(() => {
+                return axios.delete(`http://localhost:${PORT}/error/five-hundred`);
+            })
+            .catch(reason => {
+                errorReceived = reason;
+            })
+            .then(() => {
+                should(errorReceived).be.ok();
+                should(errorReceived.response.status).be.equal(500);
             })
     });
 

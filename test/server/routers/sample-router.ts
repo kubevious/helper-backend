@@ -1,10 +1,10 @@
 import { Context } from '../context';
-import { RouterWrapper } from '../../../src';
+import { Router } from '../../../src';
 import { Promise } from 'the-promise';
 
 import Joi from 'joi';
 
-export default function(router: RouterWrapper<Context>) {
+export default function(router: Router<Context>) {
     router.url("/")
 
     router.get('/version', (req, res) => {
@@ -13,7 +13,7 @@ export default function(router: RouterWrapper<Context>) {
 }
 
 
-export function router2(router: RouterWrapper<Context>) {
+export function router2(router: Router<Context>) {
     router.url("/")
 
     router.post('/bar', (req, res) => {
@@ -25,5 +25,15 @@ export function router2(router: RouterWrapper<Context>) {
                 age: Joi.number()
             })
         )
+        ;
+}
+
+
+export function router3(router: Router<Context>) {
+    router.url("/error")
+
+    router.delete('/five-hundred', (req, res) => {
+            throw new Error("I am failing")
+        });
         ;
 }
