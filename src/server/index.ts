@@ -1,13 +1,15 @@
 import express from 'express';
-import { Express, Request, Response, Router as ExpressRouter } from 'express';
+import { Express, Request, Response, Router as ExpressRouter, NextFunction } from 'express';
 import morgan from 'morgan';
 import { Server as HttpServer } from 'http';
 import path from 'path';
 import fs from 'fs';
 import _ from 'the-lodash';
 import { ILogger } from 'the-logger'
+import { Promise } from 'the-promise';
 import { Router } from './router';
 import { RouterScope } from './router-scope';
+import { MiddlewareRegistry } from './middleware-registly'
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -15,18 +17,21 @@ dotenv.config();
 export type RouterFunc<TContext> = (router: Router, context: TContext) => void;
 export type ExpressAppFunc = (app : Express) => void;
 
-export type Middleware = (req : Request, res : Response, next : (error: any) => void) => void;
+export type Middleware = (req : Request, res : Response, next : NextFunction) => void;
+export type MiddlewareName = string;
+export type MiddlewareRef = Middleware | MiddlewareName;
 
 export class Server<TContext>
 {
     private _context : TContext;
     private _app : Express;
     private _httpServer? : HttpServer;
-    private _isDev = false;
+    private _isDev : boolean;
     private _logger : ILogger;
     private _port : number;
     private _routersDir : string;
     private _appInitCb? : ExpressAppFunc;
+    private _middlewareRegistry = new MiddlewareRegistry();
 
     constructor(logger: ILogger, context : TContext, port : number, routersDir : string)
     {
@@ -38,11 +43,11 @@ export class Server<TContext>
         this._isDev = (process.env.NODE_ENV === 'development');
     }
 
-    get logger() {
+    get logger() : ILogger {
         return this._logger;
     }
 
-    get context() {
+    get context() : TContext {
         return this._context;
     }
 
@@ -50,11 +55,16 @@ export class Server<TContext>
         return this._httpServer!;
     }
 
+    middleware(name : MiddlewareName, middleware : Middleware)
+    {
+        this._middlewareRegistry.add(name, middleware);
+    }
+
     initializer(cb : ExpressAppFunc) {
         this._appInitCb = cb;
     }
 
-    run()
+    run() : Promise<Server<TContext>>
     {
         if (this._isDev)
         {
@@ -70,7 +80,7 @@ export class Server<TContext>
 
         this._loadRouters();
 
-        this._app.use((err : any, req : Request, res : Response, next : () => any) => {
+        this._app.use((err : any, req : Request, res : Response, next : NextFunction) => {
             if (err) {
                 this.logger.error(err);
                 res.status(err.status).json({ message: err.message });
@@ -79,9 +89,12 @@ export class Server<TContext>
             next();
         });
 
-        this._httpServer = this._app.listen(this._port, () => {
-            this.logger.info("Listening on port %s", this._port);
-        });
+        return Promise.construct((resolve, reject) => {
+            this._httpServer = this._app.listen(this._port, () => {
+                this.logger.info("Listening on port %s", this._port);
+                resolve(this);
+            });
+        })
     }
 
     close()
@@ -138,7 +151,7 @@ export class Server<TContext>
         const logger = this.logger.sublogger("Router_" + name);
 
         const routerScope = new RouterScope();
-        const router = new Router(this._isDev, expressRouter, logger, routerScope);
+        const router = new Router(this._isDev, expressRouter, logger, routerScope, this._middlewareRegistry);
 
         routerModuleFunc(router, this.context);
 

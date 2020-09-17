@@ -1,10 +1,13 @@
 import { Request, Response, Router as ExpressRouter, IRouterMatcher } from 'express';
 import { AnySchema as JoiSchema } from 'joi'
+import { type } from 'os';
 import { ILogger } from 'the-logger'
+import _ from 'the-lodash';
 import { Promise, Resolvable } from 'the-promise';
-import { Server, Middleware } from './index'
+import { Server, Middleware, MiddlewareName, MiddlewareRef } from './index'
 import { RouterError } from './router-error';
 import { RouterScope } from './router-scope';
+import { MiddlewareRegistry } from './middleware-registly'
 
 export type Handler = (req : Request, res : Response) => Resolvable<any>;
 
@@ -14,21 +17,32 @@ export class Router {
     private _isDev : boolean
     private _router : ExpressRouter;
     private _scope : RouterScope;
+    private _middlewareRegistry: MiddlewareRegistry;
 
-    constructor(isDev: boolean, router : ExpressRouter, logger : ILogger, scope : RouterScope)
+    constructor(isDev: boolean, router : ExpressRouter, logger : ILogger, scope : RouterScope, middlewareRegistry: MiddlewareRegistry)
     {
         this._logger = logger;
         this._isDev = isDev;
         this._router = router;
         this._scope = scope;
+        this._middlewareRegistry = middlewareRegistry;
     }
 
     url(value: string) {
         this._scope.url = value;
     }
 
-    middleware(value : Middleware) {
-        this._scope.middlewares.push(value);
+    middleware(value : MiddlewareRef)
+    {
+        if (_.isString(value))
+        {
+            const middleware = this._middlewareRegistry.get(value);
+            this._scope.middlewares.push(middleware);
+        }
+        else
+        {
+            this._scope.middlewares.push(<Middleware> value);
+        }
     }
 
     get(url : string, handler: Handler) : RouteWrapper

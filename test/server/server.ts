@@ -12,6 +12,7 @@ const loggerOptions = new LoggerOptions()
 const logger = setupLogger('test', loggerOptions);
 
 const PORT = 9999;
+const BASE_URL=`http://localhost:${PORT}`;
 
 let globalServer : Server<Context> | null;
 
@@ -20,7 +21,22 @@ describe('server', () => {
     beforeEach(() => {
         let routersPath = path.join(__dirname, 'routers');
         globalServer = new Server(logger, new Context(), PORT, routersPath);
-        globalServer.run();
+
+        globalServer.middleware("CHECK_USER", (req, response, next) => {
+            logger.info(">>>> I'm checking if the user is logged in.")
+            // req.user
+            // req.userName = 'Chuck';
+            next();
+        });
+
+        globalServer.initializer(app => {
+
+        });
+
+        return globalServer.run()
+            .then(() => {
+                logger.info("Server created.");
+            })
     });
     
     afterEach(() => {
@@ -29,21 +45,21 @@ describe('server', () => {
     });
 
     it('case-01', () => {
-        return axios.get(`http://localhost:${PORT}/version`)
+        return axios.get(`${BASE_URL}/version`)
             .then(result => {
                 should(result.data).be.equal(1234);
             })
     });
 
     it('case-02', () => {
-        return axios.get(`http://localhost:${PORT}/name`)
+        return axios.get(`${BASE_URL}/name`)
             .then(result => {
                 should(result.data).be.equal('foo-bar');
             })
     });
 
     it('body-validation-pass', () => {
-        return axios.post(`http://localhost:${PORT}/bar`, { foo: 'bar', age: 1234 })
+        return axios.post(`${BASE_URL}/bar`, { foo: 'bar', age: 1234 })
             .then(result => {
                 should(result).be.ok();
                 should(result.data).be.equal(8888);
@@ -52,7 +68,7 @@ describe('server', () => {
 
     it('body-validation-fail', () => {
         let errorReceived : any;
-        return axios.post(`http://localhost:${PORT}/bar`, { xx: '1234' })
+        return axios.post(`${BASE_URL}/bar`, { xx: '1234' })
             .catch(reason => {
                 errorReceived = reason;
             })
@@ -64,7 +80,7 @@ describe('server', () => {
 
     it('five-hindred-error', () => {
         let errorReceived : any;
-        return axios.delete(`http://localhost:${PORT}/error/five-hundred`)
+        return axios.delete(`${BASE_URL}/error/five-hundred`)
             .catch(reason => {
                 errorReceived = reason;
             })
@@ -76,7 +92,7 @@ describe('server', () => {
 
     it('report-error-api', () => {
         let errorReceived : any;
-        return axios.options(`http://localhost:${PORT}/error/another-error`)
+        return axios.options(`${BASE_URL}/error/another-error`)
             .catch(reason => {
                 errorReceived = reason;
             })
@@ -86,4 +102,21 @@ describe('server', () => {
             })
     });
 
+
+    it('middleware-01', () => {
+        return axios.get(`${BASE_URL}/do/something`)
+            .then(result => {
+                // should(errorReceived).be.ok();
+                // should(errorReceived.response.status).be.equal(403);
+            })
+    });
+
+
+    it('middleware-02', () => {
+        return axios.get(`${BASE_URL}/user/login`)
+            .then(result => {
+                // should(errorReceived).be.ok();
+                // should(errorReceived.response.status).be.equal(403);
+            })
+    });
 });
