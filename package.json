@@ -27,6 +27,7 @@
     "@types/morgan": "^1.9.1",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "joi": "^17.2.1",
     "morgan": "^1.10.0",
     "the-lodash": "^2.0.0",
     "the-logger": "^2.0.0",

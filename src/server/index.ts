@@ -2,64 +2,56 @@ import express from 'express';
 import { Express, Request, Response, Router as ExpressRouter } from 'express';
 import morgan from 'morgan';
 import { Server as HttpServer } from 'http';
-import _ from 'the-lodash';
-import { ILogger } from 'the-logger'
-
-import { Promise, Resolvable } from 'the-promise';
 import path from 'path';
 import fs from 'fs';
+import _ from 'the-lodash';
+import { ILogger } from 'the-logger'
 import { RouterError } from './router-error';
 import { RouterWrapper } from './router-wrapper';
 
 import dotenv from 'dotenv';
 dotenv.config();
 
-export type RouterFunc<TContext> = (builder: RouterBuilder<TContext>) => Router<TContext>;
+import joi from 'joi';
+import { AnySchema } from 'joi'
 
-export interface Router<TContext> {
-    url: string,
-    setup(logger: ILogger, router: RouterWrapper<TContext>, context: TContext) : void;
-}
+export type RouterFunc<TContext> = (builder: RouterWrapper<TContext>) => void;
 
-export class RouterBuilder<TContext> {
 
-    private _server: Server<TContext>;
-    private _logger : ILogger;
-    private _router : ExpressRouter;
-    private _wrapper? : RouterWrapper<TContext>;
-    private _url? : string;
+// export class RouterBuilder<TContext> {
 
-    constructor(server: Server<TContext>, logger : ILogger, router: ExpressRouter)
-    {
-        this._server = server;
-        this._logger = logger;
-        this._router = router;
-    }
+//     private _server: Server<TContext>;
+//     private _logger : ILogger;
+//     private _router : ExpressRouter;
+//     private _wrapper? : RouterWrapper<TContext>;
+//     private _url? : string;
 
-    getUrl() : string {
-        return this._url!;
-    }
+//     constructor(server: Server<TContext>, logger : ILogger, router: ExpressRouter)
+//     {
+//         this._server = server;
+//         this._logger = logger;
+//         this._router = router;
+//     }
 
-    url(value: string) : RouterWrapper<TContext>
-    {
-        this._url = value;
-        this._wrapper = new RouterWrapper(this._server, this._router, this._logger);
-        return this._wrapper!;
-    }   
+//     getUrl() : string {
+//         return this._url!;
+//     }
 
-    reportError(statusCode: number, message: string) {
-        throw new RouterError(message, statusCode);
-    }
+//     url(value: string) : RouterWrapper<TContext>
+//     {
+//         this._url = value;
+//         this._wrapper = new RouterWrapper(this._server, this._router, this._logger);
+//         return this._wrapper!;
+//     }   
 
-    reportUserError(message: string)  {
-        throw new RouterError(message, 400);
-    }
-    
-    _build() : RouterWrapper<TContext>
-    {
-        return this._wrapper!;
-    }
-}
+//     reportError(statusCode: number, message: string) {
+//         throw new RouterError(message, statusCode);
+//     }
+
+//     reportUserError(message: string)  {
+//         throw new RouterError(message, 400);
+//     }
+// }
 
 export class Server<TContext>
 {
@@ -141,6 +133,9 @@ export class Server<TContext>
 
     _loadRouters()
     {
+        if (!this._routersDir) {
+            return;
+        }
         var routerNames = fs.readdirSync(this._routersDir);
         routerNames = routerNames.map(x => path.parse(x).name);
         for(var x of routerNames)
@@ -155,7 +150,7 @@ export class Server<TContext>
 
         for(let funcName of _.keys(routerModule))
         {
-            const finalName = name + funcName;
+            const finalName = name + '-' + funcName;
             const routerModuleFuncAny = _.get(routerModule, funcName);
 
             const routerModuleFunc = <RouterFunc<TContext>>routerModuleFuncAny;
@@ -177,11 +172,10 @@ export class Server<TContext>
 
         const logger = this.logger.sublogger("Router_" + name);
 
-        const builder = new RouterBuilder(this, logger, router);
+        // const builder = new RouterBuilder(this, logger, router);
+        const builder = new RouterWrapper(this, router, logger);
 
         routerModuleFunc(builder);
-
-        const wrappedRouter = builder._build();
 
         // const wrappedRouter = new RouterWrapper<TContext>(this, router, logger);
 

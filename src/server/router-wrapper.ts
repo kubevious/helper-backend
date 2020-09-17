@@ -1,9 +1,11 @@
-import { Request, Response, Router as ExpressRouter } from 'express';
-import morgan from 'morgan'
+import { Request, Response, Router as ExpressRouter, IRouterMatcher } from 'express';
 import { Server } from './index'
 import { ILogger } from 'the-logger'
 import { Promise, Resolvable } from 'the-promise';
 import { RouterError } from './router-error';
+
+import joi from 'joi';
+import { AnySchema as JoiSchema } from 'joi'
 
 export type Handler = (req : Request, res : Response) => Resolvable<any>;
 
@@ -13,7 +15,8 @@ export class RouterWrapper<TContext> {
     private _logger : ILogger
     private _isDev : boolean
     private _router : ExpressRouter;
-    
+    private _url : string = '/';
+
     constructor(server : Server<TContext>, router : ExpressRouter, logger : ILogger)
     {
         this._server = server;
@@ -22,40 +25,91 @@ export class RouterWrapper<TContext> {
         this._router = router;
     }
 
-    get(url : string, handler: Handler)
-    {
-        this._router.get(url, (req, res) => {
-            this._handleRoute(req, res, handler)
-        })
+    getUrl() : string {
+        return this._url;
     }
 
-    post(url : string, handler: Handler)
-    {
-        this._router.post(url, (req, res) => {
-            this._handleRoute(req, res, handler)
-        })
+    url(value: string) {
+        this._url = value;
     }
 
-    put(url : string, handler: Handler)
+    get(url : string, handler: Handler) : RouteWrapper<TContext>
     {
-        this._router.put(url, (req, res) => {
-            this._handleRoute(req, res, handler)
-        })
+        return this._setupRoute(url, handler, this._router.get);
     }
 
-    delete(url : string, handler: Handler)
+    post(url : string, handler: Handler) : RouteWrapper<TContext>
     {
-        this._router.delete(url, (req, res) => {
-            this._handleRoute(req, res, handler)
-        })
+        return this._setupRoute(url, handler, this._router.post);
     }
 
-    _handleRoute(req: Request, res : Response, handler: Handler)
+    put(url : string, handler: Handler) : RouteWrapper<TContext>
+    {
+        return this._setupRoute(url, handler, this._router.put);
+    }
+
+    delete(url : string, handler: Handler) : RouteWrapper<TContext>
+    {
+        return this._setupRoute(url, handler, this._router.delete);
+    }
+
+    head(url : string, handler: Handler) : RouteWrapper<TContext>
+    {
+        return this._setupRoute(url, handler, this._router.head);
+    }
+
+    options(url : string, handler: Handler) : RouteWrapper<TContext>
+    {
+        return this._setupRoute(url, handler, this._router.options);
+    }
+
+    private _setupRoute<T>(url : string, handler: Handler, matcher: IRouterMatcher<T>) : RouteWrapper<TContext>
+    {
+        const routeHandler = new RouteHandler<TContext>(this._logger, this._isDev);
+        const routeWrapper = new RouteWrapper<TContext>(routeHandler);
+        matcher.bind(this._router)(url, (req, res) => {
+            routeHandler.handle(req, res, handler)
+        })
+        return routeWrapper;
+    }
+    
+}
+
+class RouteHandler<TContext> {
+
+    private _logger : ILogger
+    private _isDev : boolean
+    private _bodySchema?: JoiSchema
+    private _paramsSchema?: JoiSchema
+
+    constructor(logger : ILogger, isDev : boolean)
+    {
+        this._logger = logger;
+        this._isDev = isDev;
+    }
+
+    setupBodyJoiValidator(schema: JoiSchema)
+    {
+        this._bodySchema = schema;
+    }
+
+    setupParamsJoiValidator(schema: JoiSchema)
+    {
+        this._paramsSchema = schema;
+    }
+
+    handle(req: Request, res : Response, handler: Handler)
     {
         try
         {
-            var result = handler(req, res);
-            Promise.resolve(result)
+            const validationError = this._validate(req);
+            if (validationError) {
+                this._reportError(res, 400, { message: validationError! });
+                return;
+            }
+
+            const handlerResult = handler(req, res);
+            Promise.resolve(handlerResult)
                 .then(result => {
                     res.json(result)
                 }) 
@@ -69,27 +123,72 @@ export class RouterWrapper<TContext> {
         }
     }
 
-    _handleError(res: Response, reason : any)
+    _validate(req: Request) : string | undefined
     {
-        console.log(reason);
-        
+        if (this._bodySchema) {
+            const joiResult = this._bodySchema!.validate(req.body);
+            if (joiResult.error) {
+                return joiResult.error!.message;
+            }
+        }
+
+        if (this._paramsSchema) {
+            const joiResult = this._paramsSchema!.validate(req.params);
+            if (joiResult.error) {
+                return joiResult.error!.message;
+            }
+        }
+    }
+
+    private _handleError(res: Response, reason : any)
+    {
         if (this._isDev) {
             this._logger.error('[_handleError] ', reason);
         }
         if (reason instanceof RouterError) {
             let routerError = <RouterError>reason;
+            let body;
             if (this._isDev) {
-                res.status(routerError.statusCode).json({ message: routerError.message, stack: routerError.stack });
+                body = { message: routerError.message, stack: routerError.stack };
             } else {
-                res.status(routerError.statusCode).json({ message: routerError.message });
+                body = { message: routerError.message };
             }
+            this._reportError(res, routerError.statusCode, body);
         } else {
-            var status = 500;
+            let body;
             if (this._isDev) {
-                res.status(status).json({ message: reason.message, stack: reason.stack })
+                body = { message: reason.message, stack: reason.stack };
             } else {
-                res.status(status).json({ message: reason.message })
+                body = { message: reason.message };
             }
+            this._reportError(res, 500, body);
         }
     }
+
+    private _reportError(res: Response, statusCode: number, body: any)
+    {
+        res.status(statusCode).json(body);
+    }
+
+}
+
+export class RouteWrapper<TContext> {
+
+    private _handler: RouteHandler<TContext>;
+
+    constructor(handler: RouteHandler<TContext>)
+    {
+        this._handler = handler;
+    }
+
+    bodySchema(schema: JoiSchema) 
+    {
+        this._handler.setupBodyJoiValidator(schema);
+    }
+
+    paramsSchema(schema: JoiSchema) 
+    {
+        this._handler.setupParamsJoiValidator(schema);
+    }
+
 }
