@@ -4,6 +4,7 @@ import { ILogger } from 'the-logger'
 import { Promise, Resolvable } from 'the-promise';
 import { RouterError } from './router-error';
 import { RouterScope } from './router-scope';
+import { Middleware } from './index';
 
 import joi from 'joi';
 import { AnySchema as JoiSchema } from 'joi'
@@ -16,7 +17,6 @@ export class Router<TContext> {
     private _logger : ILogger
     private _isDev : boolean
     private _router : ExpressRouter;
-    private _url : string = '/';
     private _scope : RouterScope;
 
     constructor(server : Server<TContext>, router : ExpressRouter, logger : ILogger, scope : RouterScope)
@@ -30,6 +30,10 @@ export class Router<TContext> {
 
     url(value: string) {
         this._scope.url = value;
+    }
+
+    middleware(value : Middleware) {
+        this._scope.middlewares.push(value);
     }
 
     get(url : string, handler: Handler) : RouteWrapper<TContext>
@@ -60,6 +64,14 @@ export class Router<TContext> {
     options(url : string, handler: Handler) : RouteWrapper<TContext>
     {
         return this._setupRoute(url, handler, this._router.options);
+    }
+
+    reportError(statusCode: number, message: string) : void {
+        throw new RouterError(message, statusCode);
+    }
+
+    reportUserError(message: string) : void {
+        throw new RouterError(message, 400);
     }
 
     private _setupRoute<T>(url : string, handler: Handler, matcher: IRouterMatcher<T>) : RouteWrapper<TContext>

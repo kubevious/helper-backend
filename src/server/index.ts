@@ -18,6 +18,8 @@ import { AnySchema } from 'joi'
 
 export type RouterFunc<TContext> = (builder: Router<TContext>) => void;
 
+export type Middleware = (req : Request, res : Response, next : (error: any) => void) => void;
+
 export class Server<TContext>
 {
     private _context : TContext;
@@ -138,9 +140,9 @@ export class Server<TContext>
         const logger = this.logger.sublogger("Router_" + name);
 
         const routerScope = new RouterScope();
-        const builder = new Router(this, expressRouter, logger, routerScope);
+        const router = new Router(this, expressRouter, logger, routerScope);
 
-        routerModuleFunc(builder);
+        routerModuleFunc(router);
 
         // const routerContext = {
         //     logger: logger,
@@ -155,28 +157,8 @@ export class Server<TContext>
         //         throw new RouterError(message, 400);
         //     }
         // }
-
-        // routerModule.setup(routerContext);
-
-        const middlewares : any[] = [];
-
-        // middlewares.push(requestLogger(routerContext));
-        // if (routerModule.needLogin) {
-        //     middlewares.push(checkJwt)
-        // }
-        // if (routerModule.needUser) {
-        //     middlewares.push(detectUser(routerContext))
-        // }
-        // if (routerModule.needProject) {
-        //     middlewares.push(detectProject(routerContext))
-        // }
-        // if (routerModule.needCluster) {
-        //     middlewares.push(detectCluster(routerContext))
-        // }
-
-        // routerModule.setup(routerContext);
         
-        this._app.use(routerScope.url, middlewares, expressRouter);
+        this._app.use(routerScope.url, routerScope.middlewares, expressRouter);
     }
 
 }

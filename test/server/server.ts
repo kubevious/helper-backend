@@ -30,7 +30,7 @@ describe('server', () => {
     });
 
     it('case-01', () => {
-        return Promise.timeout(100)
+        return Promise.timeout(10)
             .then(() => {
                 return axios.get(`http://localhost:${PORT}/version`);
             })
@@ -40,7 +40,7 @@ describe('server', () => {
     });
 
     it('body-validation-pass', () => {
-        return Promise.timeout(100)
+        return Promise.timeout(10)
             .then(() => {
                 return axios.post(`http://localhost:${PORT}/bar`, { foo: 'bar', age: 1234 });
             })
@@ -52,7 +52,7 @@ describe('server', () => {
 
     it('body-validation-fail', () => {
         let errorReceived : any;
-        return Promise.timeout(100)
+        return Promise.timeout(10)
             .then(() => {
                 return axios.post(`http://localhost:${PORT}/bar`, { xx: '1234' });
             })
@@ -77,6 +77,21 @@ describe('server', () => {
             .then(() => {
                 should(errorReceived).be.ok();
                 should(errorReceived.response.status).be.equal(500);
+            })
+    });
+
+    it('report-error-api', () => {
+        let errorReceived : any;
+        return Promise.timeout(10)
+            .then(() => {
+                return axios.options(`http://localhost:${PORT}/error/another-error`);
+            })
+            .catch(reason => {
+                errorReceived = reason;
+            })
+            .then(() => {
+                should(errorReceived).be.ok();
+                should(errorReceived.response.status).be.equal(403);
             })
     });
 

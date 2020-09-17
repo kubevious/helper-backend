@@ -34,6 +34,12 @@ export function router3(router: Router<Context>) {
 
     router.delete('/five-hundred', (req, res) => {
             throw new Error("I am failing")
-        });
+        })
         ;
+
+    router.options('/another-error', (req, res) => {
+            router.reportError(403, 'abcd');
+        })
+        ;
+
 }
