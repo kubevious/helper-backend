@@ -1,7 +1,7 @@
 {
-  "name": "kubevious-custom-library",
+  "name": "kubevious-helper-backend",
   "version": "1.0.0",
-  "description": "kubevious-custom-library",
+  "description": "kubevious-helper-backend",
   "main": "dist/index.js",
   "types": "dist",
   "files": [
