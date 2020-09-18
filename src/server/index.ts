@@ -107,7 +107,14 @@ export class Server<TContext> {
         }
         var routerNames = fs.readdirSync(this._routersDir);
         routerNames = routerNames.filter((x) => path.extname(x).toLocaleLowerCase() == '.ts');
-        routerNames = routerNames.map((x) => path.parse(x).name);
+        routerNames = routerNames.map((x) => {
+            var name = path.parse(x).name;
+            if (path.extname(name).toLocaleLowerCase() == '.d')
+            {
+                name = path.parse(name).name;
+            }
+            return name;
+        });
         for (var x of routerNames) {
             this._loadRouter(x);
         }
