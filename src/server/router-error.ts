@@ -1,9 +1,7 @@
-
 export class RouterError extends Error {
+    statusCode: number;
 
-    statusCode : number;
-
-    constructor(message : string, statusCode : number) {
+    constructor(message: string, statusCode: number) {
         super(message);
         Object.setPrototypeOf(this, RouterError.prototype);
         // this.name = this.constructor.name;

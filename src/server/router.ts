@@ -1,26 +1,29 @@
 import { Request, Response, Router as ExpressRouter, IRouterMatcher } from 'express';
-import { AnySchema as JoiSchema } from 'joi'
-import { type } from 'os';
-import { ILogger } from 'the-logger'
+import { AnySchema as JoiSchema } from 'joi';
+import { ILogger } from 'the-logger';
 import _ from 'the-lodash';
 import { Promise, Resolvable } from 'the-promise';
-import { Server, Middleware, MiddlewareName, MiddlewareRef } from './index'
+import { Middleware, MiddlewareRef } from './index';
 import { RouterError } from './router-error';
 import { RouterScope } from './router-scope';
-import { MiddlewareRegistry } from './middleware-registly'
+import { MiddlewareRegistry } from './middleware-registly';
 
-export type Handler = (req : Request, res : Response) => Resolvable<any>;
+export type Handler = (req: Request, res: Response) => Resolvable<any>;
 
 export class Router {
-    
-    private _logger : ILogger
-    private _isDev : boolean
-    private _router : ExpressRouter;
-    private _scope : RouterScope;
+    private _logger: ILogger;
+    private _isDev: boolean;
+    private _router: ExpressRouter;
+    private _scope: RouterScope;
     private _middlewareRegistry: MiddlewareRegistry;
 
-    constructor(isDev: boolean, router : ExpressRouter, logger : ILogger, scope : RouterScope, middlewareRegistry: MiddlewareRegistry)
-    {
+    constructor(
+        isDev: boolean,
+        router: ExpressRouter,
+        logger: ILogger,
+        scope: RouterScope,
+        middlewareRegistry: MiddlewareRegistry,
+    ) {
         this._logger = logger;
         this._isDev = isDev;
         this._router = router;
@@ -32,96 +35,78 @@ export class Router {
         this._scope.url = value;
     }
 
-    middleware(value : MiddlewareRef)
-    {
-        if (_.isString(value))
-        {
+    middleware(value: MiddlewareRef) {
+        if (_.isString(value)) {
             const middleware = this._middlewareRegistry.get(value);
             this._scope.middlewares.push(middleware);
-        }
-        else
-        {
-            this._scope.middlewares.push(<Middleware> value);
+        } else {
+            this._scope.middlewares.push(<Middleware>value);
         }
     }
 
-    get(url : string, handler: Handler) : RouteWrapper
-    {
+    get(url: string, handler: Handler): RouteWrapper {
         return this._setupRoute(url, handler, this._router.get);
     }
 
-    post(url : string, handler: Handler) : RouteWrapper
-    {
+    post(url: string, handler: Handler): RouteWrapper {
         return this._setupRoute(url, handler, this._router.post);
     }
 
-    put(url : string, handler: Handler) : RouteWrapper
-    {
+    put(url: string, handler: Handler): RouteWrapper {
         return this._setupRoute(url, handler, this._router.put);
     }
 
-    delete(url : string, handler: Handler) : RouteWrapper
-    {
+    delete(url: string, handler: Handler): RouteWrapper {
         return this._setupRoute(url, handler, this._router.delete);
     }
 
-    head(url : string, handler: Handler) : RouteWrapper
-    {
+    head(url: string, handler: Handler): RouteWrapper {
         return this._setupRoute(url, handler, this._router.head);
     }
 
-    options(url : string, handler: Handler) : RouteWrapper
-    {
+    options(url: string, handler: Handler): RouteWrapper {
         return this._setupRoute(url, handler, this._router.options);
     }
 
-    reportError(statusCode: number, message: string) : void {
+    reportError(statusCode: number, message: string): void {
         throw new RouterError(message, statusCode);
     }
 
-    reportUserError(message: string) : void {
+    reportUserError(message: string): void {
         throw new RouterError(message, 400);
     }
 
-    private _setupRoute<T>(url : string, handler: Handler, matcher: IRouterMatcher<T>) : RouteWrapper
-    {
+    private _setupRoute<T>(url: string, handler: Handler, matcher: IRouterMatcher<T>): RouteWrapper {
         const routeHandler = new RouteHandler(this._logger, this._isDev);
         const routeWrapper = new RouteWrapper(routeHandler);
         matcher.bind(this._router)(url, (req, res) => {
-            routeHandler.handle(req, res, handler)
-        })
+            routeHandler.handle(req, res, handler);
+        });
         return routeWrapper;
     }
-    
 }
 
 class RouteHandler {
+    private _logger: ILogger;
+    private _isDev: boolean;
+    private _bodySchema?: JoiSchema;
+    private _paramsSchema?: JoiSchema;
 
-    private _logger : ILogger
-    private _isDev : boolean
-    private _bodySchema?: JoiSchema
-    private _paramsSchema?: JoiSchema
-
-    constructor(logger : ILogger, isDev : boolean)
-    {
+    constructor(logger: ILogger, isDev: boolean) {
         this._logger = logger;
         this._isDev = isDev;
     }
 
-    setupBodyJoiValidator(schema: JoiSchema)
-    {
+    setupBodyJoiValidator(schema: JoiSchema) {
         this._bodySchema = schema;
     }
 
-    setupParamsJoiValidator(schema: JoiSchema)
-    {
+    setupParamsJoiValidator(schema: JoiSchema) {
         this._paramsSchema = schema;
     }
 
-    handle(req: Request, res : Response, handler: Handler)
-    {
-        try
-        {
+    handle(req: Request, res: Response, handler: Handler) {
+        try {
             const validationError = this._validate(req);
             if (validationError) {
                 this._reportError(res, 400, { message: validationError! });
@@ -130,21 +115,18 @@ class RouteHandler {
 
             const handlerResult = handler(req, res);
             Promise.resolve(handlerResult)
-                .then(result => {
-                    res.json(result)
-                }) 
+                .then((result) => {
+                    res.json(result);
+                })
                 .catch((reason) => {
                     this._handleError(res, reason);
                 });
-        }
-        catch(reason)
-        {
+        } catch (reason) {
             this._handleError(res, reason);
         }
     }
 
-    _validate(req: Request) : string | undefined
-    {
+    _validate(req: Request): string | undefined {
         if (this._bodySchema) {
             const joiResult = this._bodySchema!.validate(req.body);
             if (joiResult.error) {
@@ -160,8 +142,7 @@ class RouteHandler {
         }
     }
 
-    private _handleError(res: Response, reason : any)
-    {
+    private _handleError(res: Response, reason: any) {
         if (this._isDev) {
             this._logger.error('[_handleError] ', reason);
         }
@@ -185,30 +166,23 @@ class RouteHandler {
         }
     }
 
-    private _reportError(res: Response, statusCode: number, body: any)
-    {
+    private _reportError(res: Response, statusCode: number, body: any) {
         res.status(statusCode).json(body);
     }
-
 }
 
 export class RouteWrapper {
-
     private _handler: RouteHandler;
 
-    constructor(handler: RouteHandler)
-    {
+    constructor(handler: RouteHandler) {
         this._handler = handler;
     }
 
-    bodySchema(schema: JoiSchema) 
-    {
+    bodySchema(schema: JoiSchema) {
         this._handler.setupBodyJoiValidator(schema);
     }
 
-    paramsSchema(schema: JoiSchema) 
-    {
+    paramsSchema(schema: JoiSchema) {
         this._handler.setupParamsJoiValidator(schema);
     }
-
 }
