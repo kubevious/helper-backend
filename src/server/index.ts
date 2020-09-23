@@ -14,15 +14,16 @@ import { MiddlewareRegistry } from './middleware-registly';
 import dotenv from 'dotenv';
 dotenv.config();
 
-export type RouterFunc<TContext> = (router: Router, context: TContext) => void;
+export type RouterFunc<TContext, THelpers> = (router: Router, context: TContext, logger : ILogger, helpers: THelpers) => void;
 export type ExpressAppFunc = (app: Express) => void;
 
 export type Middleware = (req: Request, res: Response, next: NextFunction) => void;
 export type MiddlewareName = string;
 export type MiddlewareRef = Middleware | MiddlewareName;
 
-export class Server<TContext> {
+export class Server<TContext, THelpers> {
     private _context: TContext;
+    private _helpers: THelpers;
     private _app: Express;
     private _httpServer?: HttpServer;
     private _isDev: boolean;
@@ -32,13 +33,15 @@ export class Server<TContext> {
     private _appInitCb?: ExpressAppFunc;
     private _middlewareRegistry = new MiddlewareRegistry();
 
-    constructor(logger: ILogger, context: TContext, port: number, routersDir: string) {
+    constructor(logger: ILogger, context: TContext, port: number, routersDir: string, helpers: THelpers) {
         this._context = context;
         this._logger = logger.sublogger('Server');
         this._routersDir = routersDir;
         this._port = port;
-        this._app = express();
+        this._helpers = helpers;
         this._isDev = process.env.NODE_ENV === 'development';
+
+        this._app = express();
     }
 
     get logger(): ILogger {
@@ -61,7 +64,7 @@ export class Server<TContext> {
         this._appInitCb = cb;
     }
 
-    run(): Promise<Server<TContext>> {
+    run(): Promise<Server<TContext, THelpers>> {
         if (this._isDev) {
             this._app.use(morgan('dev'));
         }
@@ -128,7 +131,7 @@ export class Server<TContext> {
             const finalName = name + '-' + funcName;
             const routerModuleFuncAny = _.get(routerModule, funcName);
 
-            const routerModuleFunc = <RouterFunc<TContext>>routerModuleFuncAny;
+            const routerModuleFunc = <RouterFunc<TContext, THelpers>>routerModuleFuncAny;
             if (routerModuleFunc) {
                 this.logger.info('Loading router func %s...', finalName);
                 this._loadRouterFunction(finalName, routerModuleFunc);
@@ -138,7 +141,7 @@ export class Server<TContext> {
         }
     }
 
-    _loadRouterFunction(name: string, routerModuleFunc: RouterFunc<TContext>) {
+    _loadRouterFunction(name: string, routerModuleFunc: RouterFunc<TContext, THelpers>) {
         const expressRouter = express.Router();
 
         const logger = this.logger.sublogger('Router_' + name);
@@ -146,7 +149,7 @@ export class Server<TContext> {
         const routerScope = new RouterScope();
         const router = new Router(this._isDev, expressRouter, logger, routerScope, this._middlewareRegistry);
 
-        routerModuleFunc(router, this.context);
+        routerModuleFunc(router, this.context, logger, this._helpers);
 
         this._app.use(routerScope.url, routerScope.middlewares, expressRouter);
     }

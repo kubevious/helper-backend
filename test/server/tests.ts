@@ -12,12 +12,12 @@ const logger = setupLogger('test', loggerOptions);
 const PORT = 9999;
 const BASE_URL = `http://localhost:${PORT}`;
 
-let globalServer: Server<Context> | null;
+let globalServer: Server<Context, any> | null;
 
 describe('server', () => {
     beforeEach(() => {
         let routersPath = path.join(__dirname, 'routers');
-        globalServer = new Server(logger, new Context(), PORT, routersPath);
+        globalServer = new Server(logger, new Context(), PORT, routersPath, {});
 
         globalServer.middleware('CHECK_USER', (req, response, next) => {
             logger.info(">>>> I'm checking if the user is logged in.");
