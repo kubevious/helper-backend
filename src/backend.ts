@@ -2,10 +2,17 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { ILogger, RootLogger, setupRootLogger, LoggerOptions, LogLevel } from 'the-logger';
+import { Resolvable, Promise } from 'the-promise';
+import _ from 'the-lodash';
+import { v4 as uuidv4 } from 'uuid';
+
+export type TimerFunction = () => Resolvable<any>
 
 export class Backend {
     private _rootLogger: RootLogger;
     private _logger: ILogger;
+    private _timers: Record<string, NodeJS.Timeout> = {};
+    private _intervals: NodeJS.Timeout[] = [];
 
     constructor(name: string) {
         // Process Setup
@@ -46,8 +53,51 @@ export class Backend {
 
     close() {
         console.log('[Backend::close]');
+        this._terminateTimers();
         process.stdin.pause();
         // this._rootLogger.close();
+    }
+
+    timer(timeout: number, cb: TimerFunction)
+    {
+        const id = uuidv4();
+        
+        const timerObj = setTimeout(() => {
+            delete this._timers[id];
+            Promise.resolve(cb())
+                .catch(reason => {
+                    this._logger.error("Failed in timer. ", reason);
+                })
+        }, timeout);
+
+        this._timers[id] = timerObj;
+    }
+
+    interval(timeout: number, cb: TimerFunction)
+    {
+        const timerObj = setInterval(() => {
+            Promise.resolve(cb())
+                .catch(reason => {
+                    this._logger.error("Failed in timer. ", reason);
+                })
+        }, timeout);
+
+        this._intervals.push(timerObj);
+    }
+
+    _terminateTimers()
+    {
+        for(let timerObj of this._intervals)
+        {
+            clearInterval(timerObj);
+        }
+        this._intervals = [];
+
+        for(let id of _.keys(this._timers))
+        {
+            clearTimeout(this._timers[id]);
+        }
+        this._timers = {};
     }
 
     private _exitHandler(options: any, exitCode: any) {
