@@ -3,7 +3,7 @@ import { AnySchema as JoiSchema } from 'joi';
 import { ILogger } from 'the-logger';
 import _ from 'the-lodash';
 import { Promise, Resolvable } from 'the-promise';
-import { Middleware, MiddlewareRef } from './index';
+import { Middleware, MiddlewareRef } from './server';
 import { RouterError } from './router-error';
 import { RouterScope } from './router-scope';
 import { MiddlewareRegistry } from './middleware-registly';

@@ -1,4 +1,4 @@
-import { Middleware } from './index';
+import { Middleware } from './server';
 
 export class RouterScope {
     url: string = '/';
