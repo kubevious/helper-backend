@@ -88,12 +88,12 @@ export class Backend {
                 .catch(reason => {
                     this._logger.error("Failed in timer. ", reason);
                 })
+                .then(() => null);
         }
         catch(reason)
         {
             this._logger.error("Failed in timer. ", reason);
         }
-        return null;
     }
 
     private _terminateTimers()
