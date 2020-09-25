@@ -1,4 +1,4 @@
-import { Middleware, MiddlewareName } from './index';
+import { Middleware, MiddlewareName } from './server';
 
 export class MiddlewareRegistry {
     private _dict: Record<MiddlewareName, Middleware> = {};
