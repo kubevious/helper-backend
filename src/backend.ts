@@ -64,10 +64,7 @@ export class Backend {
         
         const timerObj = setTimeout(() => {
             delete this._timers[id];
-            Promise.resolve(cb())
-                .catch(reason => {
-                    this._logger.error("Failed in timer. ", reason);
-                })
+            this._triggerCallback(cb);
         }, timeout);
 
         this._timers[id] = timerObj;
@@ -76,16 +73,30 @@ export class Backend {
     interval(timeout: number, cb: TimerFunction)
     {
         const timerObj = setInterval(() => {
-            Promise.resolve(cb())
-                .catch(reason => {
-                    this._logger.error("Failed in timer. ", reason);
-                })
+            this._triggerCallback(cb);
         }, timeout);
 
         this._intervals.push(timerObj);
     }
 
-    _terminateTimers()
+    private _triggerCallback(cb: TimerFunction)
+    {
+        try
+        {
+            const value = cb();
+            Promise.resolve(value)
+                .catch(reason => {
+                    this._logger.error("Failed in timer. ", reason);
+                })
+        }
+        catch(reason)
+        {
+            this._logger.error("Failed in timer. ", reason);
+        }
+        return null;
+    }
+
+    private _terminateTimers()
     {
         for(let timerObj of this._intervals)
         {
