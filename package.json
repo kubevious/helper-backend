@@ -1,7 +1,7 @@
 {
-  "name": "kubevious-helper-backend",
+  "name": "@kubevious/helper-backend",
   "version": "1.0.0",
-  "description": "kubevious-helper-backend",
+  "description": "Backend Helper Library",
   "main": "dist/index.js",
   "types": "dist",
   "files": [
@@ -12,13 +12,7 @@
     "build": "tsc",
     "format": "prettier --write ./src/ ./test/",
     "format-check": "prettier --write ./src/ ./test/",
-    "lint": "eslint",
-    "prepare": "npm run build",
-    "prepublishOnly": "npm test && npm run lint",
-    "preversion": "npm run lint",
-    "version": "npm run format && git add -A src",
-    "postversion": "git push && git push --tags",
-    "postinstall": "npm run build"
+    "lint": "eslint"
   },
   "author": "Ruben Hakopian <ruben.hakopian@gmail.com>",
   "license": "Propriatery",
@@ -31,7 +25,7 @@
     "morgan": "^1.10.0",
     "the-lodash": "^2.0.0",
     "the-logger": "^2.0.2",
-    "the-promise": "^2.0.2",
+    "the-promise": "^2.0.3",
     "uuid": "^8.3.0"
   },
   "devDependencies": {
