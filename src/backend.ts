@@ -51,6 +51,21 @@ export class Backend {
         return this._logger;
     }
 
+    initialize(cb : () => any)
+    {
+        this.logger.error('[Backend::initialize] Begin.');
+        Promise.resolve()
+            .then(() => cb())
+            .then(() => {
+                this.logger.error('[Backend::initialize] End.');
+            })
+            .catch((reason : any) => {
+                this.logger.error('[Backend::initialize] FAILED. Application will now exit. Reason: ', reason);
+                this.close();
+            })
+            .then(() => null);
+    }
+
     close() {
         console.log('[Backend::close]');
         this._terminateTimers();
