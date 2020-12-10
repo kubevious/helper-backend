@@ -5,7 +5,6 @@ import { ILogger, RootLogger, setupRootLogger, LoggerOptions, LogLevel } from 't
 import { Resolvable, Promise } from 'the-promise';
 import _ from 'the-lodash';
 import { v4 as uuidv4 } from 'uuid';
-import { ENGINE_METHOD_DIGESTS } from 'constants';
 
 export type TimerFunction = () => Resolvable<any>
 
@@ -15,6 +14,7 @@ export class Backend {
     private _timers: Record<string, NodeJS.Timeout> = {};
     private _intervals: NodeJS.Timeout[] = [];
     private _errorHandler? : (reason: any) => any;
+    private _exitCode = 0;
 
     constructor(name: string) {
         // Process Setup
@@ -81,6 +81,7 @@ export class Backend {
         this._terminateTimers();
         process.stdin.pause();
         // this._rootLogger.close();
+        process.exit(this._exitCode);
     }
 
     timer(timeout: number, cb: TimerFunction)
@@ -119,6 +120,7 @@ export class Backend {
     private _handleError(reason: any)
     {
         this.logger.error('[_handleError] Reason: ', reason);
+        this._exitCode = 1;
 
         Promise.resolve()
             .then(() => {
@@ -181,7 +183,7 @@ export class Backend {
 
         if (options.exit) {
             console.log('[Backend::_exitHandler] the end.');
-            process.exit();
+            this.close();
         }
     }
 }
