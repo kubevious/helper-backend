@@ -164,7 +164,7 @@ class RouteHandler {
         }
 
         if (this._querySchema) {
-            const joiResult = this._querySchema!.validate(req.params);
+            const joiResult = this._querySchema!.validate(req.query);
             if (joiResult.error) {
                 const msg = joiResult.error!.message;
                 if (this._isDev) {
