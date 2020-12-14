@@ -12,12 +12,14 @@ export type Handler = (req: Request, res: Response) => Resolvable<any>;
 
 export class Router {
     private _logger: ILogger;
+    private _name: string;
     private _isDev: boolean;
     private _router: ExpressRouter;
     private _scope: RouterScope;
     private _middlewareRegistry: MiddlewareRegistry;
 
     constructor(
+        name: string,
         isDev: boolean,
         router: ExpressRouter,
         logger: ILogger,
@@ -25,6 +27,7 @@ export class Router {
         middlewareRegistry: MiddlewareRegistry,
     ) {
         this._logger = logger;
+        this._name = name;
         this._isDev = isDev;
         this._router = router;
         this._scope = scope;
@@ -77,7 +80,7 @@ export class Router {
     }
 
     private _setupRoute<T>(url: string, handler: Handler, matcher: IRouterMatcher<T>): RouteWrapper {
-        const routeHandler = new RouteHandler(this._logger, this._isDev);
+        const routeHandler = new RouteHandler(this._logger, name, url, this._isDev);
         const routeWrapper = new RouteWrapper(routeHandler);
         matcher.bind(this._router)(url, (req, res) => {
             routeHandler.handle(req, res, handler);
@@ -88,13 +91,17 @@ export class Router {
 
 class RouteHandler {
     private _logger: ILogger;
+    private _name: string;
+    private _url: string;
     private _isDev: boolean;
     private _bodySchema?: JoiSchema;
     private _paramsSchema?: JoiSchema;
 
-    constructor(logger: ILogger, isDev: boolean) {
+    constructor(logger: ILogger, name: string, url: string, isDev: boolean) {
         this._logger = logger;
         this._isDev = isDev;
+        this._name = name;
+        this._url = url;
     }
 
     setupBodyJoiValidator(schema: JoiSchema) {
@@ -130,14 +137,22 @@ class RouteHandler {
         if (this._bodySchema) {
             const joiResult = this._bodySchema!.validate(req.body);
             if (joiResult.error) {
-                return joiResult.error!.message;
+                const msg = joiResult.error!.message;
+                if (this._isDev) {
+                    this._logger.warn("[Router] %s body schema validation error: %s", this._name, msg);
+                }
+                return msg;
             }
         }
 
         if (this._paramsSchema) {
             const joiResult = this._paramsSchema!.validate(req.params);
             if (joiResult.error) {
-                return joiResult.error!.message;
+                const msg = joiResult.error!.message;
+                if (this._isDev) {
+                    this._logger.warn("[Router] %s params schema validation error: %s", this._name, msg);
+                }
+                return msg;
             }
         }
     }

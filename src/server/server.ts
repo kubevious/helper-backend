@@ -56,6 +56,10 @@ export class Server<TContext, THelpers> {
         return this._httpServer!;
     }
 
+    markDev() {
+        this._isDev = true;
+    }
+
     middleware(name: MiddlewareName, middleware: Middleware) {
         this._middlewareRegistry.add(name, middleware);
     }
@@ -147,7 +151,7 @@ export class Server<TContext, THelpers> {
         const logger = this.logger.sublogger('Router_' + name);
 
         const routerScope = new RouterScope();
-        const router = new Router(this._isDev, expressRouter, logger, routerScope, this._middlewareRegistry);
+        const router = new Router(name, this._isDev, expressRouter, logger, routerScope, this._middlewareRegistry);
 
         routerModuleFunc(router, this.context, logger, this._helpers);
 
