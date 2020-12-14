@@ -80,7 +80,7 @@ export class Router {
     }
 
     private _setupRoute<T>(url: string, handler: Handler, matcher: IRouterMatcher<T>): RouteWrapper {
-        const routeHandler = new RouteHandler(this._logger, this._name, url, this._isDev);
+        const routeHandler = new RouteHandler(this._logger, this._name, matcher.name, url, this._isDev);
         const routeWrapper = new RouteWrapper(routeHandler);
         matcher.bind(this._router)(url, (req, res) => {
             routeHandler.handle(req, res, handler);
@@ -92,15 +92,17 @@ export class Router {
 class RouteHandler {
     private _logger: ILogger;
     private _name: string;
+    private _method: string;
     private _url: string;
     private _isDev: boolean;
     private _bodySchema?: JoiSchema;
     private _paramsSchema?: JoiSchema;
 
-    constructor(logger: ILogger, name: string, url: string, isDev: boolean) {
+    constructor(logger: ILogger, name: string, method: string, url: string, isDev: boolean) {
         this._logger = logger;
         this._isDev = isDev;
         this._name = name;
+        this._method = method;
         this._url = url;
     }
 
@@ -139,7 +141,7 @@ class RouteHandler {
             if (joiResult.error) {
                 const msg = joiResult.error!.message;
                 if (this._isDev) {
-                    this._logger.warn("[Router] %s body schema validation error: %s", this._name, msg);
+                    this._logger.warn("[Router] %s :: %s :: %s body schema validation error: %s", this._name, this._method, this._url, msg);
                 }
                 return msg;
             }
@@ -150,7 +152,7 @@ class RouteHandler {
             if (joiResult.error) {
                 const msg = joiResult.error!.message;
                 if (this._isDev) {
-                    this._logger.warn("[Router] %s params schema validation error: %s", this._name, msg);
+                    this._logger.warn("[Router] %s :: %s :: %s params schema validation error: %s", this._name, this._method, this._url, msg);
                 }
                 return msg;
             }
