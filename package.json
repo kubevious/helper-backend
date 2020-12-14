@@ -1,6 +1,6 @@
 {
   "name": "@kubevious/helper-backend",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Backend Helper Library",
   "main": "dist/index.js",
   "types": "dist",
