@@ -48,27 +48,27 @@ export class Router {
     }
 
     get(url: string, handler: Handler): RouteWrapper {
-        return this._setupRoute(url, handler, this._router.get);
+        return this._setupRoute(url, handler, 'GET', this._router.get);
     }
 
     post(url: string, handler: Handler): RouteWrapper {
-        return this._setupRoute(url, handler, this._router.post);
+        return this._setupRoute(url, handler, 'POST', this._router.post);
     }
 
     put(url: string, handler: Handler): RouteWrapper {
-        return this._setupRoute(url, handler, this._router.put);
+        return this._setupRoute(url, handler, 'PUT', this._router.put);
     }
 
     delete(url: string, handler: Handler): RouteWrapper {
-        return this._setupRoute(url, handler, this._router.delete);
+        return this._setupRoute(url, handler, 'DELETE', this._router.delete);
     }
 
     head(url: string, handler: Handler): RouteWrapper {
-        return this._setupRoute(url, handler, this._router.head);
+        return this._setupRoute(url, handler, 'HEAD', this._router.head);
     }
 
     options(url: string, handler: Handler): RouteWrapper {
-        return this._setupRoute(url, handler, this._router.options);
+        return this._setupRoute(url, handler, 'OPTIONS', this._router.options);
     }
 
     reportError(statusCode: number, message: string): void {
@@ -79,8 +79,8 @@ export class Router {
         throw new RouterError(message, 400);
     }
 
-    private _setupRoute<T>(url: string, handler: Handler, matcher: IRouterMatcher<T>): RouteWrapper {
-        const routeHandler = new RouteHandler(this._logger, this._name, matcher.name, url, this._isDev);
+    private _setupRoute<T>(url: string, handler: Handler, method: string, matcher: IRouterMatcher<T>): RouteWrapper {
+        const routeHandler = new RouteHandler(this._logger, this._name, method, url, this._isDev);
         const routeWrapper = new RouteWrapper(routeHandler);
         matcher.bind(this._router)(url, (req, res) => {
             routeHandler.handle(req, res, handler);
@@ -97,6 +97,7 @@ class RouteHandler {
     private _isDev: boolean;
     private _bodySchema?: JoiSchema;
     private _paramsSchema?: JoiSchema;
+    private _querySchema?: JoiSchema;
 
     constructor(logger: ILogger, name: string, method: string, url: string, isDev: boolean) {
         this._logger = logger;
@@ -112,6 +113,10 @@ class RouteHandler {
 
     setupParamsJoiValidator(schema: JoiSchema) {
         this._paramsSchema = schema;
+    }
+
+    setupQueryJoiValidator(schema: JoiSchema) {
+        this._querySchema = schema;
     }
 
     handle(req: Request, res: Response, handler: Handler) {
@@ -153,6 +158,17 @@ class RouteHandler {
                 const msg = joiResult.error!.message;
                 if (this._isDev) {
                     this._logger.warn("[Router] %s :: %s :: %s params schema validation error: %s", this._name, this._method, this._url, msg);
+                }
+                return msg;
+            }
+        }
+
+        if (this._querySchema) {
+            const joiResult = this._querySchema!.validate(req.params);
+            if (joiResult.error) {
+                const msg = joiResult.error!.message;
+                if (this._isDev) {
+                    this._logger.warn("[Router] %s :: %s :: %s query schema validation error: %s", this._name, this._method, this._url, msg);
                 }
                 return msg;
             }
@@ -201,5 +217,9 @@ export class RouteWrapper {
 
     paramsSchema(schema: JoiSchema) {
         this._handler.setupParamsJoiValidator(schema);
+    }
+
+    querySchema(schema: JoiSchema) {
+        this._handler.setupQueryJoiValidator(schema);
     }
 }
