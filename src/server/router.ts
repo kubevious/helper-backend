@@ -80,7 +80,7 @@ export class Router {
     }
 
     private _setupRoute<T>(url: string, handler: Handler, matcher: IRouterMatcher<T>): RouteWrapper {
-        const routeHandler = new RouteHandler(this._logger, name, url, this._isDev);
+        const routeHandler = new RouteHandler(this._logger, this._name, url, this._isDev);
         const routeWrapper = new RouteWrapper(routeHandler);
         matcher.bind(this._router)(url, (req, res) => {
             routeHandler.handle(req, res, handler);
