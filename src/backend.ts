@@ -39,11 +39,12 @@ export class Backend {
 
         loggerOptions.pretty(true);
 
-        if (process.env.LOG_TRACE) {
-            loggerOptions.level(LogLevel.debug);
-        } else {
-            loggerOptions.level(LogLevel.info);
+        let logLevel = LogLevel.info;;
+        if (process.env.LOG_LEVEL) {
+            logLevel = <LogLevel>process.env.LOG_LEVEL;
         }
+        loggerOptions.level(logLevel);
+
         if (process.env.LOG_TO_FILE) {
             loggerOptions.enableFile(true);
             loggerOptions.cleanOnStart(true);
