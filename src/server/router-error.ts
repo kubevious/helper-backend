@@ -9,3 +9,13 @@ export class RouterError extends Error {
         this.statusCode = statusCode;
     }
 }
+export class ErrorReporter 
+{
+    reportError(statusCode: number, message: string): void {
+        throw new RouterError(message, statusCode);
+    }
+
+    reportUserError(message: string): void {
+        throw new RouterError(message, 400);
+    }
+}

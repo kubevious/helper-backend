@@ -19,11 +19,13 @@ describe('server', () => {
         let routersPath = path.join(__dirname, 'routers');
         globalServer = new Server(logger, new Context(), PORT, routersPath, {});
 
-        globalServer.middleware('CHECK_USER', (req, response, next) => {
-            logger.info(">>>> I'm checking if the user is logged in.");
-            // req.user
-            // req.userName = 'Chuck';
-            next();
+        globalServer.middleware('CHECK_USER', (context, logger, errorReporter, helpers) => {
+            return (req, response, next) => {
+                logger.info(">>>> I'm checking if the user is logged in.");
+                // req.user
+                // req.userName = 'Chuck';
+                next();
+            }
         });
 
         globalServer.initializer((app) => {});

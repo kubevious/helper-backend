@@ -4,7 +4,7 @@ import { ILogger } from 'the-logger';
 import _ from 'the-lodash';
 import { Promise, Resolvable } from 'the-promise';
 import { Middleware, MiddlewareRef } from './server';
-import { RouterError } from './router-error';
+import { RouterError, ErrorReporter } from './router-error';
 import { RouterScope } from './router-scope';
 import { MiddlewareRegistry } from './middleware-registly';
 
@@ -17,6 +17,7 @@ export class Router {
     private _router: ExpressRouter;
     private _scope: RouterScope;
     private _middlewareRegistry: MiddlewareRegistry;
+    private _errorReporter: ErrorReporter;
 
     constructor(
         name: string,
@@ -32,6 +33,7 @@ export class Router {
         this._router = router;
         this._scope = scope;
         this._middlewareRegistry = middlewareRegistry;
+        this._errorReporter = new ErrorReporter();
     }
 
     url(value: string) {
@@ -72,11 +74,11 @@ export class Router {
     }
 
     reportError(statusCode: number, message: string): void {
-        throw new RouterError(message, statusCode);
+        this._errorReporter.reportError(statusCode, message);
     }
 
     reportUserError(message: string): void {
-        throw new RouterError(message, 400);
+        this._errorReporter.reportUserError(message);
     }
 
     private _setupRoute<T>(url: string, handler: Handler, method: string, matcher: IRouterMatcher<T>): RouteWrapper {

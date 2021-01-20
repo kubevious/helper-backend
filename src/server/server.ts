@@ -12,6 +12,7 @@ import { RouterScope } from './router-scope';
 import { MiddlewareRegistry } from './middleware-registly';
 
 import dotenv from 'dotenv';
+import { ErrorReporter } from './router-error';
 dotenv.config();
 
 export type RouterFunc<TContext, THelpers> = (router: Router, context: TContext, logger : ILogger, helpers: THelpers) => void;
@@ -20,6 +21,7 @@ export type ExpressAppFunc = (app: Express) => void;
 export type Middleware = (req: Request, res: Response, next: NextFunction) => void;
 export type MiddlewareName = string;
 export type MiddlewareRef = Middleware | MiddlewareName;
+export type MiddlewareBuilder<TContext, THelpers> = (context: TContext, logger: ILogger, errorReporter: ErrorReporter, helpers: THelpers) => Middleware;
 
 export class Server<TContext, THelpers> {
     private _context: TContext;
@@ -32,6 +34,7 @@ export class Server<TContext, THelpers> {
     private _routersDir: string;
     private _appInitCb?: ExpressAppFunc;
     private _middlewareRegistry = new MiddlewareRegistry();
+    private _errorReporter = new ErrorReporter();
 
     constructor(logger: ILogger, context: TContext, port: number, routersDir: string, helpers: THelpers) {
         this._context = context;
@@ -56,11 +59,16 @@ export class Server<TContext, THelpers> {
         return this._httpServer!;
     }
 
+    get helpers() {
+        return this._helpers;
+    }
+
     markDev() {
         this._isDev = true;
     }
 
-    middleware(name: MiddlewareName, middleware: Middleware) {
+    middleware(name: MiddlewareName, middlewareBuilder: MiddlewareBuilder<TContext, THelpers>) {
+        const middleware = middlewareBuilder(this.context, this.logger, this._errorReporter, this._helpers);
         this._middlewareRegistry.add(name, middleware);
     }
 
