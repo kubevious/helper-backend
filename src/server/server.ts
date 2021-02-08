@@ -23,6 +23,11 @@ export type MiddlewareName = string;
 export type MiddlewareRef = Middleware | MiddlewareName;
 export type MiddlewareBuilder<TContext, THelpers> = (context: TContext, logger: ILogger, errorReporter: ErrorReporter, helpers: THelpers) => Middleware;
 
+export interface ServerParams
+{
+    staticHostingPath? : string
+}
+
 export class Server<TContext, THelpers> {
     private _context: TContext;
     private _helpers: THelpers;
@@ -35,14 +40,16 @@ export class Server<TContext, THelpers> {
     private _appInitCb?: ExpressAppFunc;
     private _middlewareRegistry = new MiddlewareRegistry();
     private _errorReporter = new ErrorReporter();
+    private _serverParams? : ServerParams;
 
-    constructor(logger: ILogger, context: TContext, port: number, routersDir: string, helpers: THelpers) {
+    constructor(logger: ILogger, context: TContext, port: number, routersDir: string, helpers: THelpers, params? : ServerParams) {
         this._context = context;
         this._logger = logger.sublogger('Server');
         this._routersDir = routersDir;
         this._port = port;
         this._helpers = helpers;
         this._isDev = process.env.NODE_ENV === 'development';
+        this._serverParams = params;
 
         this._app = express();
     }
@@ -82,6 +89,12 @@ export class Server<TContext, THelpers> {
         }
 
         this._app.use(express.json({ limit: '10mb' }));
+
+        if (this._serverParams) {
+            if (this._serverParams.staticHostingPath) {
+                this._app.use(express.static(this._serverParams.staticHostingPath));
+            }
+        }
 
         if (this._appInitCb) {
             this._appInitCb!(this._app);
