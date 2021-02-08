@@ -90,12 +90,6 @@ export class Server<TContext, THelpers> {
 
         this._app.use(express.json({ limit: '10mb' }));
 
-        if (this._serverParams) {
-            if (this._serverParams.staticHostingPath) {
-                this._app.use(express.static(this._serverParams.staticHostingPath));
-            }
-        }
-
         if (this._appInitCb) {
             this._appInitCb!(this._app);
         }
@@ -110,6 +104,12 @@ export class Server<TContext, THelpers> {
             }
             next();
         });
+
+        if (this._serverParams) {
+            if (this._serverParams.staticHostingPath) {
+                this._app.use(express.static(this._serverParams.staticHostingPath));
+            }
+        }
 
         return Promise.construct((resolve, reject) => {
             this._httpServer = this._app.listen(this._port, () => {
