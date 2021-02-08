@@ -67,6 +67,10 @@ export class Server<TContext, THelpers> {
         return this._httpServer!;
     }
 
+    get port() {
+        return this._port;
+    }
+
     get helpers() {
         return this._helpers;
     }
