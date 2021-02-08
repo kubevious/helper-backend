@@ -48,6 +48,7 @@ export class Server<TContext, THelpers> {
         this._routersDir = routersDir;
         this._port = port;
         this._helpers = helpers;
+        this._logger.info("NODE_ENV= %s", process.env.NODE_ENV);
         this._isDev = process.env.NODE_ENV === 'development';
         this._serverParams = params;
 
@@ -71,6 +72,7 @@ export class Server<TContext, THelpers> {
     }
 
     markDev() {
+        this._logger.info("[markDev]");
         this._isDev = true;
     }
 
@@ -84,6 +86,8 @@ export class Server<TContext, THelpers> {
     }
 
     run(): Promise<Server<TContext, THelpers>> {
+        this._logger.info("[run] isDev=%s", this._isDev);
+
         if (this._isDev) {
             this._app.use(morgan('dev'));
         }
