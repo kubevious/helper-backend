@@ -2,11 +2,30 @@ import 'mocha';
 import should = require('should');
 import { Backend } from '../../src';
 import { Promise } from 'the-promise';
+import { LogLevel } from 'the-logger';
 
 describe('backend', () => {
     it('case-01', () => {
         const backend = new Backend('my-backend');
         backend.logger.info('hello world');
+        backend.close();
+    });
+
+    it('sublogger-levels', () => {
+        const backend = new Backend('my-backend', {
+            logLevels: {
+                'sample': LogLevel.warn
+            }
+        });
+        backend.logger.info('hello world');
+        let sampleLogger = backend.logger.sublogger('sample');
+
+        backend.logger.info('hello world');
+
+        sampleLogger.info('hello world')
+        sampleLogger.warn('WWW hello world')
+        sampleLogger.error('EEE hello world')
+
         backend.close();
     });
 

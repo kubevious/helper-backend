@@ -7,7 +7,10 @@ import _ from 'the-lodash';
 import { v4 as uuidv4 } from 'uuid';
 
 export type TimerFunction = () => Resolvable<any>
-
+export interface BackendOptions 
+{
+    logLevels?: Record<string, LogLevel>
+}
 export class Backend {
     private _rootLogger: RootLogger;
     private _logger: ILogger;
@@ -16,7 +19,7 @@ export class Backend {
     private _errorHandler? : (reason: any) => any;
     private _exitCode = 0;
 
-    constructor(name: string) {
+    constructor(name: string, options? : BackendOptions) {
         // Process Setup
         process.stdin.resume();
         process.on('exit', this._exitHandler.bind(this, { event: 'exit', cleanup: true }));
@@ -34,6 +37,8 @@ export class Backend {
         //catches uncaught exceptions
         process.on('unhandledRejection', this._unhandledRejection.bind(this));
 
+        options = options || {};
+
         // Logging
         const loggerOptions = new LoggerOptions();
 
@@ -49,12 +54,26 @@ export class Backend {
             loggerOptions.enableFile(true);
             loggerOptions.cleanOnStart(true);
         }
+
+        if (options) {
+            if (options.logLevels) {
+                for(let name of _.keys(options.logLevels))
+                {
+                    loggerOptions.subLevel(name, options.logLevels[name]);
+                }
+            }
+        }
+
         this._rootLogger = setupRootLogger(name, loggerOptions);
         this._logger = this._rootLogger.logger;
     }
 
     get logger(): ILogger {
         return this._logger;
+    }
+
+    get rootLogger() {
+        return this._rootLogger;
     }
 
     initialize(cb : () => any)
