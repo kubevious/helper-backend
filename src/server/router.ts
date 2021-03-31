@@ -1,23 +1,23 @@
-import { Request, Response, Router as ExpressRouter, IRouterMatcher } from 'express';
+import { Request, Response, Router as ExpressRouter, IRouterMatcher, NextFunction } from 'express';
 import { AnySchema as JoiSchema } from 'joi';
 import { ILogger } from 'the-logger';
 import _ from 'the-lodash';
 import { Promise, Resolvable } from 'the-promise';
-import { Middleware, MiddlewareRef } from './server';
+import { MiddlewareCallbackFunc, MiddlewarePromiseFunc, MiddlewareRef } from './server';
 import { RouterError, ErrorReporter } from './router-error';
 import { RouterScope } from './router-scope';
-import { MiddlewareRegistry } from './middleware-registly';
+import { MiddlewareInfo, MiddlewareKind, MiddlewareRegistry } from './middleware-registry';
 
 export type Handler = (req: Request, res: Response) => Resolvable<any>;
 
 export class Router {
     private _logger: ILogger;
     private _name: string;
-    private _isDev: boolean;
     private _router: ExpressRouter;
     private _scope: RouterScope;
     private _middlewareRegistry: MiddlewareRegistry;
     private _errorReporter: ErrorReporter;
+    private _executorScope: ExecutorScope;
 
     constructor(
         name: string,
@@ -29,11 +29,12 @@ export class Router {
     ) {
         this._logger = logger;
         this._name = name;
-        this._isDev = isDev;
         this._router = router;
         this._scope = scope;
         this._middlewareRegistry = middlewareRegistry;
         this._errorReporter = new ErrorReporter();
+
+        this._executorScope = new ExecutorScope(logger, isDev);
     }
 
     url(value: string) {
@@ -42,10 +43,10 @@ export class Router {
 
     middleware(value: MiddlewareRef) {
         if (_.isString(value)) {
-            const middleware = this._middlewareRegistry.get(value);
-            this._scope.middlewares.push(middleware);
+            const middlewareInfo = this._middlewareRegistry.get(value);
+            this._activateMiddlewareInfo(middlewareInfo);
         } else {
-            this._scope.middlewares.push(<Middleware>value);
+            this._activateMiddlewareCallback(<MiddlewareCallbackFunc>value);
         }
     }
 
@@ -82,13 +83,64 @@ export class Router {
     }
 
     private _setupRoute<T>(url: string, handler: Handler, method: string, matcher: IRouterMatcher<T>): RouteWrapper {
-        const routeHandler = new RouteHandler(this._logger, this._name, method, url, this._isDev);
+        const routeHandler = new RouteHandler(this._logger, this._name, method, url, this._executorScope);
         const routeWrapper = new RouteWrapper(routeHandler);
         matcher.bind(this._router)(url, (req, res) => {
             routeHandler.handle(req, res, handler);
         });
         return routeWrapper;
     }
+
+    private _activateMiddlewareInfo(middlewareInfo: MiddlewareInfo)
+    {
+        if (middlewareInfo.kind == MiddlewareKind.Callback) {
+            this._activateMiddlewareCallback(middlewareInfo.callback!)
+        } else if (middlewareInfo.kind == MiddlewareKind.Promise) {
+            this._activateMiddlewarePromise(middlewareInfo.promise!)
+        } else {
+            throw new Error(`Invalid middleware handler`);
+        }
+    }
+
+    private _activateMiddlewareCallback(middleware: MiddlewareCallbackFunc)
+    {
+        const middlewareHandler = 
+            (req: Request, res: Response, next: NextFunction) => 
+            {
+                try
+                {
+                    middleware(req, res, next);
+                }
+                catch(error)
+                {
+                    this._executorScope.handleError(res, error);
+                }
+            };
+
+        this._scope.middlewares.push(middlewareHandler);
+    }
+
+    private _activateMiddlewarePromise(middleware: MiddlewarePromiseFunc)
+    {
+        const middlewareHandler = 
+            (req: Request, res: Response, next: NextFunction) => 
+            {
+                Promise.try(() => {
+                        return middleware(req, res)
+                    })
+                    .then(() => {
+                        next();
+                        return null;
+                    })
+                    .catch(reason => {
+                        this._executorScope.handleError(res, reason);
+                        return null;
+                    })
+            };
+
+        this._scope.middlewares.push(middlewareHandler);
+    }
+
 }
 
 class RouteHandler {
@@ -100,13 +152,15 @@ class RouteHandler {
     private _bodySchema?: JoiSchema;
     private _paramsSchema?: JoiSchema;
     private _querySchema?: JoiSchema;
+    private _executorScope: ExecutorScope;
 
-    constructor(logger: ILogger, name: string, method: string, url: string, isDev: boolean) {
+    constructor(logger: ILogger, name: string, method: string, url: string, executorScope: ExecutorScope) {
         this._logger = logger;
-        this._isDev = isDev;
         this._name = name;
         this._method = method;
         this._url = url;
+        this._executorScope = executorScope;
+        this._isDev = executorScope.isDev;
     }
 
     setupBodyJoiValidator(schema: JoiSchema) {
@@ -125,7 +179,7 @@ class RouteHandler {
         try {
             const validationError = this._validate(req);
             if (validationError) {
-                this._reportError(res, 400, { message: validationError! });
+                this._executorScope.reportError(res, 400, { message: validationError! });
                 return;
             }
 
@@ -135,14 +189,14 @@ class RouteHandler {
                     res.json(result);
                 })
                 .catch((reason) => {
-                    this._handleError(res, reason);
+                    this._executorScope.handleError(res, reason);
                 });
         } catch (reason) {
-            this._handleError(res, reason);
+            this._executorScope.handleError(res, reason);
         }
     }
 
-    _validate(req: Request): string | undefined {
+    private _validate(req: Request): string | undefined {
         if (this._bodySchema) {
             const joiResult = this._bodySchema!.validate(req.body);
             if (joiResult.error) {
@@ -177,33 +231,7 @@ class RouteHandler {
         }
     }
 
-    private _handleError(res: Response, reason: any) {
-        if (this._isDev) {
-            this._logger.error('[_handleError] ', reason);
-        }
-        if (reason instanceof RouterError) {
-            let routerError = <RouterError>reason;
-            let body;
-            if (this._isDev) {
-                body = { message: routerError.message, stack: routerError.stack };
-            } else {
-                body = { message: routerError.message };
-            }
-            this._reportError(res, routerError.statusCode, body);
-        } else {
-            let body;
-            if (this._isDev) {
-                body = { message: reason.message, stack: reason.stack };
-            } else {
-                body = { message: reason.message };
-            }
-            this._reportError(res, 500, body);
-        }
-    }
 
-    private _reportError(res: Response, statusCode: number, body: any) {
-        res.status(statusCode).json(body);
-    }
 }
 
 export class RouteWrapper {
@@ -224,4 +252,50 @@ export class RouteWrapper {
     querySchema(schema: JoiSchema) {
         this._handler.setupQueryJoiValidator(schema);
     }
+}
+
+class ExecutorScope
+{
+    private _logger: ILogger;
+    private _isDev: boolean;
+
+    constructor(logger: ILogger, isDev: boolean) {
+        this._logger = logger;
+        this._isDev = isDev;
+    }
+
+    get isDev() {
+        return this._isDev;
+    }
+
+    handleError(res: Response, reason: any)
+    {
+        if (this._isDev) {
+            this._logger.error('[_handleError] ', reason);
+        }
+        if (reason instanceof RouterError) {
+            let routerError = <RouterError>reason;
+            let body;
+            if (this._isDev) {
+                body = { message: routerError.message, stack: routerError.stack };
+            } else {
+                body = { message: routerError.message };
+            }
+            this.reportError(res, routerError.statusCode, body);
+        } else {
+            let body;
+            if (this._isDev) {
+                body = { message: reason.message, stack: reason.stack };
+            } else {
+                body = { message: reason.message };
+            }
+            this.reportError(res, 500, body);
+        }
+    }
+
+    reportError(res: Response, statusCode: number, body: any)
+    {
+        res.status(statusCode).json(body);
+    }
+
 }

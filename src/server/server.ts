@@ -1,5 +1,5 @@
 import express from 'express';
-import { Express, Request, Response, Router as ExpressRouter, NextFunction } from 'express';
+import { Express, Request, Response, NextFunction } from 'express';
 import morgan from 'morgan';
 import { Server as HttpServer } from 'http';
 import path from 'path';
@@ -9,7 +9,7 @@ import { ILogger } from 'the-logger';
 import { Promise } from 'the-promise';
 import { Router } from './router';
 import { RouterScope } from './router-scope';
-import { MiddlewareRegistry } from './middleware-registly';
+import { MiddlewareRegistry } from './middleware-registry';
 
 import dotenv from 'dotenv';
 import { ErrorReporter } from './router-error';
@@ -18,10 +18,12 @@ dotenv.config();
 export type RouterFunc<TContext, THelpers> = (router: Router, context: TContext, logger : ILogger, helpers: THelpers) => void;
 export type ExpressAppFunc = (app: Express) => void;
 
-export type Middleware = (req: Request, res: Response, next: NextFunction) => void;
+export type MiddlewareCallbackFunc = (req: Request, res: Response, next: NextFunction) => void;
+export type MiddlewarePromiseFunc = (req: Request, res: Response) => Promise<any> | void;
 export type MiddlewareName = string;
-export type MiddlewareRef = Middleware | MiddlewareName;
-export type MiddlewareBuilder<TContext, THelpers> = (context: TContext, logger: ILogger, errorReporter: ErrorReporter, helpers: THelpers) => Middleware;
+export type MiddlewareRef = MiddlewareCallbackFunc | MiddlewareName;
+export type MiddlewareFunctionBuilder<TContext, THelpers> = (context: TContext, logger: ILogger, errorReporter: ErrorReporter, helpers: THelpers) => MiddlewareCallbackFunc;
+export type MiddlewarePromiseBuilder<TContext, THelpers> = (context: TContext, logger: ILogger, errorReporter: ErrorReporter, helpers: THelpers) => MiddlewarePromiseFunc;
 
 export interface ServerParams
 {
@@ -80,9 +82,14 @@ export class Server<TContext, THelpers> {
         this._isDev = true;
     }
 
-    middleware(name: MiddlewareName, middlewareBuilder: MiddlewareBuilder<TContext, THelpers>) {
-        const middleware = middlewareBuilder(this.context, this.logger, this._errorReporter, this._helpers);
-        this._middlewareRegistry.add(name, middleware);
+    middleware(name: MiddlewareName, builder: MiddlewareFunctionBuilder<TContext, THelpers>) {
+        const middleware = builder(this.context, this.logger, this._errorReporter, this._helpers);
+        this._middlewareRegistry.addFunc(name, middleware);
+    }
+
+    middlewareP(name: MiddlewareName, builder: MiddlewarePromiseBuilder<TContext, THelpers>) {
+        const middleware = builder(this.context, this.logger, this._errorReporter, this._helpers);
+        this._middlewareRegistry.addPromise(name, middleware);
     }
 
     initializer(cb: ExpressAppFunc) {

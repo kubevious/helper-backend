@@ -2,6 +2,6 @@ export { Express, Request, Response, Router as ExpressRouter, NextFunction } fro
 
 export { RouterFunc } from './server';
 export { ExpressAppFunc } from './server';
-export { Middleware, MiddlewareName, MiddlewareRef } from './server';
+export { MiddlewareName, MiddlewareRef } from './server';
 
 export { Server } from './server';

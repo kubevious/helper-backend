@@ -1,7 +1,7 @@
-import { Middleware } from './server';
+import { MiddlewareCallbackFunc } from './server';
 
 export class RouterScope {
     url: string = '/';
 
-    middlewares: Middleware[] = [];
+    middlewares: MiddlewareCallbackFunc[] = [];
 }
