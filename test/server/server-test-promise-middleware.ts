@@ -5,6 +5,7 @@ import { Server } from '../../src';
 import { Context } from './context';
 import path from 'path';
 import axios from 'axios';
+import { RequestLocals } from './types';
 
 const loggerOptions = new LoggerOptions().enableFile(false).pretty(true);
 const logger = setupLogger('test', loggerOptions);
@@ -14,19 +15,17 @@ const BASE_URL = `http://localhost:${PORT}`;
 
 let globalServer: Server<Context, any> | null;
 
-describe('server', () => {
+describe('server-test-promise-middleware', () => {
     beforeEach(() => {
         let routersPath = path.join(__dirname, 'routers');
         globalServer = new Server(logger, new Context(), PORT, routersPath, {});
 
-        globalServer.middleware('CHECK_USER', (context, logger, errorReporter, helpers) => {
-            return (req, response, next) => {
+        globalServer.middlewareP<{}, RequestLocals>('CHECK_USER', ({ logger }) => {
+            return (req, response) => {
                 logger.info(">>>> I'm checking if the user is logged in.");
-                // req.user
-                // req.userName = 'Chuck';
-                next();
+                response.locals.username = 'Chuck';
             }
-        });
+        }, {});
 
         globalServer.initializer((app) => {});
 
@@ -100,15 +99,13 @@ describe('server', () => {
 
     it('middleware-01', () => {
         return axios.get(`${BASE_URL}/do/something`).then((result) => {
-            // should(errorReceived).be.ok();
-            // should(errorReceived.response.status).be.equal(403);
+            should(result.data).be.equal(2222);
         });
     });
 
     it('middleware-02', () => {
         return axios.get(`${BASE_URL}/user/login`).then((result) => {
-            // should(errorReceived).be.ok();
-            // should(errorReceived.response.status).be.equal(403);
+            should(result.data).be.equal('chuck');
         });
     });
 });

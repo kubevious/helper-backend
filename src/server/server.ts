@@ -18,12 +18,14 @@ dotenv.config();
 export type RouterFunc<TContext, THelpers> = (router: Router, context: TContext, logger : ILogger, helpers: THelpers) => void;
 export type ExpressAppFunc = (app: Express) => void;
 
-export type MiddlewareCallbackFunc = (req: Request, res: Response, next: NextFunction) => void;
-export type MiddlewarePromiseFunc = (req: Request, res: Response) => Promise<any> | void;
+export type MiddlewareBuilderArgs<TCustom = {}> = TCustom & { logger: ILogger, errorReporter: ErrorReporter };
+
+export type MiddlewareCallbackFunc<TLocals = any> = (req: Request, res: Response<any, TLocals>, next: NextFunction) => void;
+export type MiddlewarePromiseFunc<TLocals = any> = (req: Request, res: Response<any, TLocals>) => Promise<any> | void;
 export type MiddlewareName = string;
 export type MiddlewareRef = MiddlewareCallbackFunc | MiddlewareName;
-export type MiddlewareFunctionBuilder<TContext, THelpers> = (context: TContext, logger: ILogger, errorReporter: ErrorReporter, helpers: THelpers) => MiddlewareCallbackFunc;
-export type MiddlewarePromiseBuilder<TContext, THelpers> = (context: TContext, logger: ILogger, errorReporter: ErrorReporter, helpers: THelpers) => MiddlewarePromiseFunc;
+export type MiddlewareFunctionBuilder<TCustom = {}, TLocals = any> = (args: MiddlewareBuilderArgs<TCustom>) => MiddlewareCallbackFunc<TLocals>;
+export type MiddlewarePromiseBuilder<TCustom = {}, TLocals = any> = (args: MiddlewareBuilderArgs<TCustom>) => MiddlewarePromiseFunc<TLocals>;
 
 export interface ServerParams
 {
@@ -82,13 +84,17 @@ export class Server<TContext, THelpers> {
         this._isDev = true;
     }
 
-    middleware(name: MiddlewareName, builder: MiddlewareFunctionBuilder<TContext, THelpers>) {
-        const middleware = builder(this.context, this.logger, this._errorReporter, this._helpers);
+    middleware<TCustom = {}, TLocals = any>(name: MiddlewareName, builder: MiddlewareFunctionBuilder<TCustom, TLocals>, params: TCustom) {
+        const args : MiddlewareBuilderArgs<TCustom> = 
+            { ...params, ...{ logger : this.logger, errorReporter : this._errorReporter } };
+        const middleware = builder(args);
         this._middlewareRegistry.addFunc(name, middleware);
     }
 
-    middlewareP(name: MiddlewareName, builder: MiddlewarePromiseBuilder<TContext, THelpers>) {
-        const middleware = builder(this.context, this.logger, this._errorReporter, this._helpers);
+    middlewareP<TCustom = {}, TLocals = any>(name: MiddlewareName, builder: MiddlewarePromiseBuilder<TCustom, TLocals>, params: TCustom) {
+        const args : MiddlewareBuilderArgs<TCustom> = 
+            { ...params, ...{ logger : this.logger, errorReporter : this._errorReporter } };
+        const middleware = builder(args);
         this._middlewareRegistry.addPromise(name, middleware);
     }
 

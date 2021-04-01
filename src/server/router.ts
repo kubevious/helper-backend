@@ -8,7 +8,12 @@ import { RouterError, ErrorReporter } from './router-error';
 import { RouterScope } from './router-scope';
 import { MiddlewareInfo, MiddlewareKind, MiddlewareRegistry } from './middleware-registry';
 
-export type Handler = (req: Request, res: Response) => Resolvable<any>;
+export interface ParamsDictionary {
+    [key: string]: string;
+}
+
+export type Handler<TReqParams = ParamsDictionary, TReqBody = any, TLocals = any> = 
+    (req: Request<TReqParams, any, TReqBody, TLocals>, res: Response<any, TLocals>) => Resolvable<any>;
 
 export class Router {
     private _logger: ILogger;
@@ -50,27 +55,33 @@ export class Router {
         }
     }
 
-    get(url: string, handler: Handler): RouteWrapper {
+    get<TReqParams = ParamsDictionary, TReqBody = any, TLocals = any>
+    (url: string, handler: Handler<TReqParams, TReqBody, TLocals>): RouteWrapper<TReqParams, TReqBody, TLocals> {
         return this._setupRoute(url, handler, 'GET', this._router.get);
     }
 
-    post(url: string, handler: Handler): RouteWrapper {
+    post<TReqParams = ParamsDictionary, TReqBody = any, TLocals = any>
+    (url: string, handler: Handler<TReqParams, TReqBody, TLocals>): RouteWrapper<TReqParams, TReqBody, TLocals> {
         return this._setupRoute(url, handler, 'POST', this._router.post);
     }
 
-    put(url: string, handler: Handler): RouteWrapper {
+    put<TReqParams = ParamsDictionary, TReqBody = any, TLocals = any>
+    (url: string, handler: Handler<TReqParams, TReqBody, TLocals>): RouteWrapper<TReqParams, TReqBody, TLocals> {
         return this._setupRoute(url, handler, 'PUT', this._router.put);
     }
 
-    delete(url: string, handler: Handler): RouteWrapper {
+    delete<TReqParams = ParamsDictionary, TReqBody = any, TLocals = any>
+    (url: string, handler: Handler<TReqParams, TReqBody, TLocals>): RouteWrapper<TReqParams, TReqBody, TLocals> {
         return this._setupRoute(url, handler, 'DELETE', this._router.delete);
     }
 
-    head(url: string, handler: Handler): RouteWrapper {
+    head<TReqParams = ParamsDictionary, TReqBody = any, TLocals = any>
+    (url: string, handler: Handler<TReqParams, TReqBody, TLocals>): RouteWrapper<TReqParams, TReqBody, TLocals> {
         return this._setupRoute(url, handler, 'HEAD', this._router.head);
     }
 
-    options(url: string, handler: Handler): RouteWrapper {
+    options<TReqParams = ParamsDictionary, TReqBody = any, TLocals = any>
+    (url: string, handler: Handler<TReqParams, TReqBody, TLocals>): RouteWrapper<TReqParams, TReqBody, TLocals> {
         return this._setupRoute(url, handler, 'OPTIONS', this._router.options);
     }
 
@@ -82,11 +93,20 @@ export class Router {
         this._errorReporter.reportUserError(message);
     }
 
-    private _setupRoute<T>(url: string, handler: Handler, method: string, matcher: IRouterMatcher<T>): RouteWrapper {
-        const routeHandler = new RouteHandler(this._logger, this._name, method, url, this._executorScope);
+    private _setupRoute<TReqParams, TReqBody, TLocals>
+        (url: string, 
+         handler: Handler<TReqParams, TReqBody, TLocals>,
+         method: string,
+         matcher: IRouterMatcher<any>) 
+        : RouteWrapper<TReqParams, TReqBody, TLocals>
+    {
+        const routeHandler = new RouteHandler<TReqParams, TReqBody, TLocals>(this._logger, this._name, method, url, this._executorScope);
         const routeWrapper = new RouteWrapper(routeHandler);
         matcher.bind(this._router)(url, (req, res) => {
-            routeHandler.handle(req, res, handler);
+            routeHandler.handle(
+                ((<unknown>req) as Request<TReqParams, any, TReqBody, TLocals>),
+                 res as Response<any, TLocals>,
+                 handler); 
         });
         return routeWrapper;
     }
@@ -143,7 +163,8 @@ export class Router {
 
 }
 
-class RouteHandler {
+class RouteHandler<TReqParams, TReqBody, TLocals>
+{
     private _logger: ILogger;
     private _name: string;
     private _method: string;
@@ -175,7 +196,11 @@ class RouteHandler {
         this._querySchema = schema;
     }
 
-    handle(req: Request, res: Response, handler: Handler) {
+    handle(
+        req: Request<TReqParams, any, TReqBody, TLocals>,
+        res: Response<any, TLocals>,
+        handler: Handler<TReqParams, TReqBody, TLocals>)
+    {
         try {
             const validationError = this._validate(req);
             if (validationError) {
@@ -196,7 +221,7 @@ class RouteHandler {
         }
     }
 
-    private _validate(req: Request): string | undefined {
+    private _validate(req: Request<TReqParams, any, TReqBody, TLocals>): string | undefined {
         if (this._bodySchema) {
             const joiResult = this._bodySchema!.validate(req.body);
             if (joiResult.error) {
@@ -234,10 +259,11 @@ class RouteHandler {
 
 }
 
-export class RouteWrapper {
-    private _handler: RouteHandler;
+export class RouteWrapper<TReqParams, TReqBody, TLocals>
+{
+    private _handler: RouteHandler<TReqParams, TReqBody, TLocals>;
 
-    constructor(handler: RouteHandler) {
+    constructor(handler: RouteHandler<TReqParams, TReqBody, TLocals>) {
         this._handler = handler;
     }
 

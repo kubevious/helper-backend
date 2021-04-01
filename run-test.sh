@@ -4,3 +4,7 @@ MY_DIR="$(dirname $MY_PATH)"
 cd $MY_DIR
 
 npm test
+
+# npm test -- -g server
+
+# npm test -- -g backend
