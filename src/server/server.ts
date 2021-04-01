@@ -18,12 +18,13 @@ dotenv.config();
 export type RouterFunc<TContext, THelpers> = (router: Router, context: TContext, logger : ILogger, helpers: THelpers) => void;
 export type ExpressAppFunc = (app: Express) => void;
 
-export type MiddlewareBuilderArgs<TCustom = {}> = TCustom & { logger: ILogger, errorReporter: ErrorReporter };
+export type MiddlewareName = string;
+export type MiddlewareRef = MiddlewareCallbackFunc | MiddlewareName;
 
 export type MiddlewareCallbackFunc<TLocals = any> = (req: Request, res: Response<any, TLocals>, next: NextFunction) => void;
 export type MiddlewarePromiseFunc<TLocals = any> = (req: Request, res: Response<any, TLocals>) => Promise<any> | void;
-export type MiddlewareName = string;
-export type MiddlewareRef = MiddlewareCallbackFunc | MiddlewareName;
+
+export type MiddlewareBuilderArgs<TCustom = {}> = TCustom & { logger: ILogger, errorReporter: ErrorReporter };
 export type MiddlewareFunctionBuilder<TCustom = {}, TLocals = any> = (args: MiddlewareBuilderArgs<TCustom>) => MiddlewareCallbackFunc<TLocals>;
 export type MiddlewarePromiseBuilder<TCustom = {}, TLocals = any> = (args: MiddlewareBuilderArgs<TCustom>) => MiddlewarePromiseFunc<TLocals>;
 
