@@ -150,7 +150,7 @@ export class Server<TContext, THelpers> {
         }
     }
 
-    _loadRouters() {
+    private _loadRouters() {
         if (!this._routersDir) {
             return;
         }
@@ -169,7 +169,7 @@ export class Server<TContext, THelpers> {
         }
     }
 
-    _loadRouter(name: string) {
+    private _loadRouter(name: string) {
         this.logger.info('Loading router %s...', name);
         const routerModule = require(path.join(this._routersDir, name));
 
@@ -187,7 +187,7 @@ export class Server<TContext, THelpers> {
         }
     }
 
-    _loadRouterFunction(name: string, routerModuleFunc: RouterFunc<TContext, THelpers>) {
+    private _loadRouterFunction(name: string, routerModuleFunc: RouterFunc<TContext, THelpers>) {
         const expressRouter = express.Router();
 
         const logger = this.logger.sublogger('Router_' + name);

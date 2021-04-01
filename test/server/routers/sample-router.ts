@@ -42,3 +42,27 @@ export function router3(router: Router, context: Context) {
         router.reportError(403, 'abcd');
     });
 }
+
+
+export function router4(router: Router, context: Context) {
+    router.url('/router4');
+
+    router.get<any, any, Company, User>('/foo', (req, res) => {
+        // req.query.address
+        // res.locals.name
+    });
+
+}
+
+export interface User
+{
+    name: string,
+    phone: string
+}
+
+
+export interface Company
+{
+    address: string,
+    symbol: string
+}
