@@ -18,7 +18,7 @@ let globalServer: Server<Context, any> | null;
 describe('server-test-promise-middleware', () => {
     beforeEach(() => {
         let routersPath = path.join(__dirname, 'routers');
-        globalServer = new Server(logger, new Context(), PORT, routersPath, {});
+        globalServer = new Server(logger, new Context(), '', { port: PORT, routersDir: routersPath });
 
         globalServer.middlewareP<{}, RequestLocals>('CHECK_USER',
             (req, response) => {

@@ -293,14 +293,17 @@ export class RouteWrapper<TReqParams, TReqBody, TReqQuery, TLocals>
 
     bodySchema(schema: JoiSchema) {
         this._handler.setupBodyJoiValidator(schema);
+        return this;
     }
 
     paramsSchema(schema: JoiSchema) {
         this._handler.setupParamsJoiValidator(schema);
+        return this;
     }
 
     querySchema(schema: JoiSchema) {
         this._handler.setupQueryJoiValidator(schema);
+        return this;
     }
 }
 

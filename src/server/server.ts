@@ -31,7 +31,9 @@ export type MiddlewarePromiseBuilder<TCustom = {}, TLocals = any> = (args: Middl
 
 export interface ServerParams
 {
-    staticHostingPath? : string
+    port?: number,
+    staticHostingPath? : string,
+    routersDir?: string,
 }
 
 export class Server<TContext, THelpers> {
@@ -42,21 +44,31 @@ export class Server<TContext, THelpers> {
     private _isDev: boolean;
     private _logger: ILogger;
     private _port: number;
-    private _routersDir: string;
+    private _routersDir?: string;
     private _appInitCb?: ExpressAppFunc;
     private _middlewareRegistry = new MiddlewareRegistry();
     private _errorReporter = new ErrorReporter();
-    private _serverParams? : ServerParams;
+    private _serverParams : ServerParams;
 
-    constructor(logger: ILogger, context: TContext, port: number, routersDir: string, helpers: THelpers, params? : ServerParams) {
+    constructor(logger: ILogger, context: TContext, helpers: THelpers, params? : ServerParams) {
+
+        this._serverParams = params || {};
+
         this._context = context;
         this._logger = logger.sublogger('Server');
-        this._routersDir = routersDir;
-        this._port = port;
+        this._routersDir = this._serverParams.routersDir;
         this._helpers = helpers;
         this._logger.info("NODE_ENV= %s", process.env.NODE_ENV);
         this._isDev = process.env.NODE_ENV === 'development';
-        this._serverParams = params;
+
+        if (this._serverParams.port) {
+            this._port = this._serverParams.port;
+        } else {
+            if (!process.env.SERVER_PORT) {
+                throw new Error("SERVER_PORT is not set.")
+            }
+            this._port = parseInt(process.env.SERVER_PORT);
+        }
 
         this._app = express();
     }
@@ -126,10 +138,8 @@ export class Server<TContext, THelpers> {
             next();
         });
 
-        if (this._serverParams) {
-            if (this._serverParams.staticHostingPath) {
-                this._app.use(express.static(this._serverParams.staticHostingPath));
-            }
+        if (this._serverParams.staticHostingPath) {
+            this._app.use(express.static(this._serverParams.staticHostingPath));
         }
 
         return Promise.construct((resolve, reject) => {
@@ -171,7 +181,7 @@ export class Server<TContext, THelpers> {
 
     private _loadRouter(name: string) {
         this.logger.info('Loading router %s...', name);
-        const routerModule = require(path.join(this._routersDir, name));
+        const routerModule = require(path.join(this._routersDir!, name));
 
         for (let funcName of _.keys(routerModule)) {
             const finalName = name + '-' + funcName;

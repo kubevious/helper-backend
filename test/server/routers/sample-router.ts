@@ -50,7 +50,8 @@ export function router4(router: Router, context: Context) {
     router.get<any, any, Company, User>('/foo', (req, res) => {
         // req.query.address
         // res.locals.name
-    });
+    })
+    ;
 
 }
 
