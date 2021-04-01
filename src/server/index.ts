@@ -5,6 +5,6 @@ export { ExpressAppFunc } from './server';
 
 export { MiddlewareName, MiddlewareRef } from './server';
 export { MiddlewareCallbackFunc, MiddlewarePromiseFunc } from './server';
-export { MiddlewareBuilderArgs, MiddlewareFunctionBuilder, MiddlewarePromiseBuilder } from './server';
+export { BaseMiddlewareArgs, MiddlewareBuilderArgs, MiddlewareFunctionBuilder, MiddlewarePromiseBuilder } from './server';
 
 export { Server } from './server';

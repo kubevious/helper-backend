@@ -24,7 +24,8 @@ export type MiddlewareRef = MiddlewareCallbackFunc | MiddlewareName;
 export type MiddlewareCallbackFunc<TLocals = any> = (req: Request, res: Response<any, TLocals>, next: NextFunction) => void;
 export type MiddlewarePromiseFunc<TLocals = any> = (req: Request, res: Response<any, TLocals>) => Promise<any> | void;
 
-export type MiddlewareBuilderArgs<TCustom = {}> = TCustom & { logger: ILogger, errorReporter: ErrorReporter };
+export type BaseMiddlewareArgs = { logger: ILogger, errorReporter: ErrorReporter };
+export type MiddlewareBuilderArgs<TCustom = {}> = TCustom & BaseMiddlewareArgs;
 export type MiddlewareFunctionBuilder<TCustom = {}, TLocals = any> = (args: MiddlewareBuilderArgs<TCustom>) => MiddlewareCallbackFunc<TLocals>;
 export type MiddlewarePromiseBuilder<TCustom = {}, TLocals = any> = (args: MiddlewareBuilderArgs<TCustom>) => MiddlewarePromiseFunc<TLocals>;
 
@@ -78,6 +79,10 @@ export class Server<TContext, THelpers> {
 
     get helpers() {
         return this._helpers;
+    }
+
+    get errorReporter() {
+        return this._errorReporter;
     }
 
     markDev() {
