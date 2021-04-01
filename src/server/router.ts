@@ -147,7 +147,13 @@ export class Router {
             {
                 try
                 {
-                    middleware(req, res, next);
+                    middleware(req, res, (error: any) => {
+                        if (!error) {
+                            next();
+                        } else {
+                            this._executorScope.handleError(res, error);
+                        }
+                    });
                 }
                 catch(error)
                 {
@@ -314,10 +320,11 @@ class ExecutorScope
 
     handleError(res: Response, reason: any)
     {
-        if (this._isDev) {
-            this._logger.error('[_handleError] ', reason);
-        }
         if (reason instanceof RouterError) {
+            if (this._isDev) {
+                this._logger.warn('[_handleError] ', reason);
+            }
+
             let routerError = <RouterError>reason;
             let body;
             if (this._isDev) {
@@ -327,6 +334,10 @@ class ExecutorScope
             }
             this.reportError(res, routerError.statusCode, body);
         } else {
+            if (this._isDev) {
+                this._logger.error('[_handleError] ', reason);
+            }
+
             let body;
             if (this._isDev) {
                 body = { message: reason.message, stack: reason.stack };
