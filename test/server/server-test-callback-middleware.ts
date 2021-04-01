@@ -109,8 +109,6 @@ describe('server-test-callback-middleware', () => {
     it('middleware-02', () => {
         return axios.get(`${BASE_URL}/user/login`).then((result) => {
             should(result.data).be.equal('chuck');
-            // should(errorReceived).be.ok();
-            // should(errorReceived.response.status).be.equal(403);
         });
     });
 });
