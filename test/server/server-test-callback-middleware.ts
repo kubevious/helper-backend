@@ -20,15 +20,15 @@ describe('server-test-callback-middleware', () => {
         let routersPath = path.join(__dirname, 'routers');
         globalServer = new Server(logger, new Context(), PORT, routersPath, {});
 
-        globalServer.middleware<{}, RequestLocals>('CHECK_USER', ({ logger }) => {
-            return (req, response, next) => {
+        globalServer.middleware<{}, RequestLocals>('CHECK_USER', 
+            (req, response, next) => {
                 logger.info(">>>> I'm checking if the user is logged in.");
 
                 response.locals.username = 'chuck';
 
                 next();
             }
-        }, {});
+        , {});
 
         globalServer.initializer((app) => {});
 

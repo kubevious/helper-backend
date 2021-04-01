@@ -90,17 +90,11 @@ export class Server<TContext, THelpers> {
         this._isDev = true;
     }
 
-    middleware<TCustom = {}, TLocals = any>(name: MiddlewareName, builder: MiddlewareFunctionBuilder<TCustom, TLocals>, params: TCustom) {
-        const args : MiddlewareBuilderArgs<TCustom> = 
-            { ...params, ...{ logger : this.logger, errorReporter : this._errorReporter } };
-        const middleware = builder(args);
+    middleware<TCustom = {}, TLocals = any>(name: MiddlewareName, middleware: MiddlewareCallbackFunc<TLocals>, params: TCustom) {
         this._middlewareRegistry.addFunc(name, middleware);
     }
 
-    middlewareP<TCustom = {}, TLocals = any>(name: MiddlewareName, builder: MiddlewarePromiseBuilder<TCustom, TLocals>, params: TCustom) {
-        const args : MiddlewareBuilderArgs<TCustom> = 
-            { ...params, ...{ logger : this.logger, errorReporter : this._errorReporter } };
-        const middleware = builder(args);
+    middlewareP<TCustom = {}, TLocals = any>(name: MiddlewareName, middleware: MiddlewarePromiseFunc<TLocals>, params: TCustom) {
         this._middlewareRegistry.addPromise(name, middleware);
     }
 

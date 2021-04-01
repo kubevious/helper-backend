@@ -20,12 +20,12 @@ describe('server-test-promise-middleware', () => {
         let routersPath = path.join(__dirname, 'routers');
         globalServer = new Server(logger, new Context(), PORT, routersPath, {});
 
-        globalServer.middlewareP<{}, RequestLocals>('CHECK_USER', ({ logger }) => {
-            return (req, response) => {
+        globalServer.middlewareP<{}, RequestLocals>('CHECK_USER',
+            (req, response) => {
                 logger.info(">>>> I'm checking if the user is logged in.");
                 response.locals.username = 'Chuck';
             }
-        }, {});
+        , {});
 
         globalServer.initializer((app) => {});
 
@@ -105,7 +105,7 @@ describe('server-test-promise-middleware', () => {
 
     it('middleware-02', () => {
         return axios.get(`${BASE_URL}/user/login`).then((result) => {
-            should(result.data).be.equal('chuck');
+            should(result.data).be.equal('Chuck');
         });
     });
 });
