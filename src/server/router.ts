@@ -342,7 +342,7 @@ class ExecutorScope
         if (code == 500) {
             this._logger.warn('[_handleError] SERVER ERROR: ', reason);
         }
-        
+
         this.reportError(res, code, body);
     }
 
@@ -361,6 +361,10 @@ class ExecutorScope
         }
         else
         {
+            if (_.isNumber(reason.status)) {
+                return <number>reason.status;
+            }
+
             if (_.isNumber(reason.code)) {
                 return <number>reason.code;
             }
