@@ -323,37 +323,92 @@ class ExecutorScope
 
     handleError(res: Response, reason: any)
     {
-        if (reason instanceof RouterError) {
-            if (this._isDev) {
-                this._logger.warn('[_handleError] ', reason);
-            }
-
-            let routerError = <RouterError>reason;
-            let body;
-            if (this._isDev) {
-                body = { message: routerError.message, stack: routerError.stack };
-            } else {
-                body = { message: routerError.message };
-            }
-            this.reportError(res, routerError.statusCode, body);
-        } else {
-            if (this._isDev) {
-                this._logger.error('[_handleError] ', reason);
-            }
-
-            let body;
-            if (this._isDev) {
-                body = { message: reason.message, stack: reason.stack };
-            } else {
-                body = { message: reason.message };
-            }
-            this.reportError(res, 500, body);
+        if (this._isDev) {
+            this._logger.warn('[_handleError] ', reason);
         }
+
+        const code = this._getCode(reason);
+        const message = this._getMessage(reason);
+
+        const body : any = {
+            code: code,
+            message: message,
+        }
+
+        if (this._isDev) {
+            body.stack = this._getStack(reason);
+        }
+
+        if (code == 500) {
+            this._logger.warn('[_handleError] SERVER ERROR: ', reason);
+        }
+        
+        this.reportError(res, code, body);
     }
 
     reportError(res: Response, statusCode: number, body: any)
     {
         res.status(statusCode).json(body);
+    }
+
+    private _getCode(reason: any): number
+    {
+        if (reason instanceof RouterError)
+        {
+            if (_.isNumber(reason.statusCode)) {
+                return reason.statusCode;
+            }
+        }
+        else
+        {
+            if (_.isNumber(reason.code)) {
+                return <number>reason.code;
+            }
+
+            if (_.isNumber(reason.statusCode)) {
+                return <number>reason.statusCode;
+            }
+        }
+
+        return 500;
+    }
+
+    private _getMessage(reason: any): string
+    {
+        let message: string = "";
+        if (reason instanceof RouterError)
+        {
+            if (_.isString(reason.message)) {
+                message = reason.message;
+            }
+        }
+        else
+        {
+            if (_.isString(reason.message)) {
+                message = reason.message;
+            }
+        }
+
+        if (!message) {
+            message = "Unknown internal error."
+        }
+
+        return message;
+    }
+
+
+    private _getStack(reason: any): string
+    {
+        let stack : string = "";
+        if (reason.stack) {
+            stack = reason.stack;
+        }
+
+        if (!stack) {
+            stack = "Unknown stack"
+        }
+
+        return stack;
     }
 
 }

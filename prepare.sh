@@ -8,4 +8,7 @@ rm -rf dist/
 
 npm install
 
-npm update the-lodash the-logger the-promise
+npm update \
+    the-lodash \
+    the-logger \
+    the-promise
