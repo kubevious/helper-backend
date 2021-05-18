@@ -50,7 +50,9 @@ export class Backend {
         }
         loggerOptions.level(logLevel);
 
-        if (process.env.LOG_TO_FILE) {
+        if (process.env.LOG_TO_FILE &&
+            (process.env.LOG_TO_FILE == 'true' || process.env.LOG_TO_FILE == 'yes'))
+        {
             loggerOptions.enableFile(true);
             loggerOptions.cleanOnStart(true);
         }
@@ -79,14 +81,15 @@ export class Backend {
     initialize(cb : () => any)
     {
         this.logger.info('[Backend::initialize] Begin.');
-        Promise.resolve()
-            .then(() => cb())
+        Promise.try(cb)
             .then(() => {
                 this.logger.info('[Backend::initialize] End.');
+                return null;
             })
             .catch((reason : any) => {
                 this.logger.error('[Backend::initialize] FAILED. Application will now exit. Reason: ', reason);
-                return this._handleError(reason);
+                this._handleError(reason);
+                return null;
             })
             .then(() => null);
     }
@@ -142,18 +145,21 @@ export class Backend {
         this.logger.error('[_handleError] Reason: ', reason);
         this._exitCode = 1;
 
-        Promise.resolve()
+        Promise.resolve(null)
             .then(() => {
                 if (this._errorHandler)
                 {
-                    return this._errorHandler!(reason);
+                    this._errorHandler!(reason);
                 }
+                return null
             })
             .catch((reason : any) => {
                 this.logger.error('[Backend::_handleError] FAILED. Reason:', reason);
+                return null;
             })
             .then(() => {
                 this.close();
+                return null;
             })
             .then(() => null);
     }
@@ -162,10 +168,10 @@ export class Backend {
     {
         try
         {
-            const value = cb();
-            Promise.resolve(value)
+            Promise.try(cb)
                 .catch(reason => {
                     this._logger.error("Failed in timer. ", reason);
+                    return null;
                 })
                 .then(() => null);
         }

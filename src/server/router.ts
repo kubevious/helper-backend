@@ -236,9 +236,11 @@ class RouteHandler<TReqParams, TReqBody, TReqQuery, TLocals>
             Promise.resolve(handlerResult)
                 .then((result) => {
                     res.json(result);
+                    return null;
                 })
                 .catch((reason) => {
                     this._executorScope.handleError(res, reason);
+                    return null;
                 });
         } catch (reason) {
             this._executorScope.handleError(res, reason);
