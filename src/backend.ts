@@ -6,11 +6,20 @@ import { Resolvable, Promise } from 'the-promise';
 import _ from 'the-lodash';
 import { v4 as uuidv4 } from 'uuid';
 
+export type AnyFunction = () => Resolvable<any> 
 export type TimerFunction = () => Resolvable<any>
 export interface BackendOptions 
 {
     logLevels?: Record<string, LogLevel>
 }
+
+interface BackendStage
+{
+    name: string,
+    setup: AnyFunction,
+    cleanup?: AnyFunction
+}
+
 export class Backend {
     private _rootLogger: RootLogger;
     private _logger: ILogger;
@@ -18,18 +27,22 @@ export class Backend {
     private _intervals: NodeJS.Timeout[] = [];
     private _errorHandler? : (reason: any) => any;
     private _exitCode = 0;
+    private _stages: BackendStage[] = [];
 
     constructor(name: string, options? : BackendOptions) {
         // Process Setup
         process.stdin.resume();
-        process.on('exit', this._exitHandler.bind(this, { event: 'exit', cleanup: true }));
+        process.on('exit', this._exitHandler.bind(this, <EventOptions>{ event: 'exit', cleanup: true }));
+
+        //k8s pre kill event
+        process.on('SIGTERM', this._exitHandler.bind(this, <EventOptions>{ event: 'SIGTERM', cleanup: true, exit: true }));
 
         //catches ctrl+c event
-        process.on('SIGINT', this._exitHandler.bind(this, { event: 'SIGINT', exit: true }));
+        process.on('SIGINT', this._exitHandler.bind(this, <EventOptions>{ event: 'SIGINT', exit: true }));
 
         // catches "kill pid" (for example: nodemon restart)
-        process.on('SIGUSR1', this._exitHandler.bind(this, { event: 'SIGUSR1', exit: true }));
-        process.on('SIGUSR2', this._exitHandler.bind(this, { event: 'SIGUSR2', exit: true }));
+        process.on('SIGUSR1', this._exitHandler.bind(this, <EventOptions>{ event: 'SIGUSR1', exit: true }));
+        process.on('SIGUSR2', this._exitHandler.bind(this, <EventOptions>{ event: 'SIGUSR2', exit: true }));
 
         //catches uncaught exceptions
         process.on('uncaughtException', this._uncaughtException.bind(this));
@@ -66,6 +79,14 @@ export class Backend {
             }
         }
 
+        const LogLevelOverridePrefix = 'LOG_LEVEL_'
+        for(let key of _.keys(process.env).filter(x => _.startsWith(x, LogLevelOverridePrefix)))
+        {
+            const sublevelName = key.substring(LogLevelOverridePrefix.length);
+            const logLevel = <LogLevel>process.env[key];
+            loggerOptions.subLevel(sublevelName, logLevel);
+        }
+
         this._rootLogger = setupRootLogger(name, loggerOptions);
         this._logger = this._rootLogger.logger;
     }
@@ -78,17 +99,57 @@ export class Backend {
         return this._rootLogger;
     }
 
-    initialize(cb : () => any)
+    stage(name: string, setup: AnyFunction, options?: {
+        cleanup?: AnyFunction,
+        kill?: AnyFunction
+    })
     {
-        this.logger.info('[Backend::initialize] Begin.');
+        this.logger.info("Stage: %s", name);
+
+        this._stages.push({
+            name: name,
+            setup: setup
+            // cleanup: cleanup
+        });
+    }
+
+    run()
+    {
+        this.execute('run', () => {
+
+            return Promise.serial(this._stages, x => {
+                this.logger.info("[run] stage: %s begin...", x.name);
+                return x.setup();
+            })
+
+        }, (reason) => {
+            this.logger.error('[run] FAILED. Application will now exit. Reason: ', reason);
+            this._handleError(reason);
+        })
+    }
+
+    initialize(cb : AnyFunction)
+    {
+        this.logger.error('[DEPRECATED] use backend.stage and backend.run instead.');;
+        this.execute('initialize', cb, (reason) => {
+            this.logger.error('[initialize] FAILED. Application will now exit. Reason: ', reason);
+            this._handleError(reason);
+        })
+    }
+
+    execute(name: string, cb : AnyFunction, handleError?: (reason: any) => void)
+    {
+        this.logger.info('[execute] %s :: Begin.', name);
         Promise.try(cb)
             .then(() => {
-                this.logger.info('[Backend::initialize] End.');
+                this.logger.info('[execute] %s :: End.', name);
                 return null;
             })
             .catch((reason : any) => {
-                this.logger.error('[Backend::initialize] FAILED. Application will now exit. Reason: ', reason);
-                this._handleError(reason);
+                this.logger.error('[execute] %s :: Failed. Reason: ', name, reason);
+                if (handleError) {
+                    this._handleError(reason);
+                }
                 return null;
             })
             .then(() => null);
@@ -196,7 +257,7 @@ export class Backend {
         this._timers = {};
     }
 
-    private _exitHandler(options: any, exitCode: any) {
+    private _exitHandler(options: EventOptions, exitCode: any) {
         console.log('[Backend::_exitHandler] event: %s', options.event);
 
         if (options.cleanup) {
@@ -204,7 +265,7 @@ export class Backend {
         }
 
         if (exitCode || exitCode === 0) {
-            console.log('[Backend::_exitHandler] exiting with: ' + exitCode);
+            console.log('[Backend::_exitHandler] exiting with: %s' + exitCode);
         }
 
         if (options.exit) {
@@ -212,4 +273,10 @@ export class Backend {
             this.close();
         }
     }
+}
+
+interface EventOptions { 
+    event: string,
+    cleanup?: boolean,
+    exit?: boolean
 }
