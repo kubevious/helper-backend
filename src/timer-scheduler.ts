@@ -18,9 +18,9 @@ export class TimerScheduler
         this._logger.info('[constructor]');
     }
 
-    timer(timeoutMs: number, cb: TimerFunction) : TimerObject
+    timer(name: string, timeoutMs: number, cb: TimerFunction) : TimerObject
     {
-        this._logger.info('[timer] ');
+        this._logger.info('[timer] %s', name);
 
         const id = uuidv4();
 
@@ -31,6 +31,7 @@ export class TimerScheduler
 
         const timerInfo : TimerInfo = {
             id: id,
+            name: name,
             handle: timerObj
         }
 
@@ -38,7 +39,7 @@ export class TimerScheduler
 
         return {
             close: () => {
-                this._logger.info("[timer::close] id: %s", id);
+                this._logger.info("[timer::close] %s, id: %s", name, id);
                 const info = this._timers[id];
                 if (info) {
                     delete this._timers[id];
@@ -48,9 +49,9 @@ export class TimerScheduler
         }
     }
 
-    interval(timeoutMs: number, cb: TimerFunction) : TimerObject
+    interval(name: string, timeoutMs: number, cb: TimerFunction) : TimerObject
     {
-        this._logger.info('[interval] ');
+        this._logger.info('[interval] %s', name);
 
         const id = uuidv4();
 
@@ -60,6 +61,7 @@ export class TimerScheduler
 
         const timerInfo : TimerInfo = {
             id: id,
+            name: name,
             handle: timerObj
         }
 
@@ -67,11 +69,10 @@ export class TimerScheduler
 
         return {
             close: () => {
-                this._logger.info("[interval::close] id: %s", id);
+                this._logger.info("[interval::close] %s, id: %s", name, id);
                 const info = this._intervals[id];
                 if (info) {
                     delete this._intervals[id];
-                    this._logger.info("[interval::close] handle: %s", info.handle);
                     clearInterval(info.handle);
                 }
             }
@@ -123,6 +124,7 @@ export class TimerScheduler
 interface TimerInfo
 {
     id: string;
+    name: string;
     handle: NodeJS.Timeout;
 }
 

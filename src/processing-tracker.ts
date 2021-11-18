@@ -44,9 +44,12 @@ export class ProcessingTracker implements ProcessingTrackerScoper
         this.disablePeriodicDebugOutput();
         seconds = seconds || 60;
 
-        this._interval = this._timerScheduler.interval(seconds * 1000, () => {
-            this.debugOutput();
-        })
+        this._interval = this._timerScheduler.interval(
+            "processing-tracker",
+            seconds * 1000, 
+            () => {
+                this.debugOutput();
+            });
     }
 
     disablePeriodicDebugOutput()

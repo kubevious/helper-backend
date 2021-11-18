@@ -38,10 +38,13 @@ describe('backend', () => {
 
         let count = 0;
 
-        backend.timerScheduler.timer(100, () => {
-            count++;
-            return Promise.timeout(10);
-        })
+        backend.timerScheduler.timer(
+            "test-timer",
+            100, 
+            () => {
+                count++;
+                return Promise.timeout(10);
+            });
 
         return Promise.timeout(1050)
             .then(() => {
@@ -59,11 +62,14 @@ describe('backend', () => {
 
         let count = 0;
 
-        backend.timerScheduler.interval(100, () => {
-            console.log("[Interval] Triggered")
-            count++;
-            return Promise.timeout(10);
-        })
+        backend.timerScheduler.interval(
+            "test-interval",
+            100,
+            () => {
+                console.log("[Interval] Triggered")
+                count++;
+                return Promise.timeout(10);
+            });
 
         return Promise.timeout(1050)
             .then(() => {

@@ -11,6 +11,8 @@ import { Router } from './router';
 import { RouterScope } from './router-scope';
 import { MiddlewareRegistry } from './middleware-registry';
 
+import { ExecutionLimiter } from '../execution-limiter';
+
 import dotenv from 'dotenv';
 import { ErrorReporter } from './router-error';
 dotenv.config();
@@ -49,6 +51,7 @@ export class Server<TContext, THelpers> {
     private _middlewareRegistry = new MiddlewareRegistry();
     private _errorReporter = new ErrorReporter();
     private _serverParams : ServerParams;
+    private _executionLimiter : ExecutionLimiter;
 
     constructor(logger: ILogger, context: TContext, helpers: THelpers, params? : ServerParams) {
 
@@ -69,6 +72,8 @@ export class Server<TContext, THelpers> {
             }
             this._port = parseInt(process.env.SERVER_PORT);
         }
+
+        this._executionLimiter = new ExecutionLimiter(this._logger);
 
         this._app = express();
     }
@@ -95,6 +100,10 @@ export class Server<TContext, THelpers> {
 
     get errorReporter() {
         return this._errorReporter;
+    }
+
+    get executionLimiter() {
+        return this._executionLimiter;
     }
 
     markDev() {
@@ -164,17 +173,17 @@ export class Server<TContext, THelpers> {
         if (!this._routersDir) {
             return;
         }
-        var routerNames = fs.readdirSync(this._routersDir);
+        let routerNames = fs.readdirSync(this._routersDir);
         routerNames = routerNames.filter((x) => path.extname(x).toLocaleLowerCase() == '.ts');
         routerNames = routerNames.map((x) => {
-            var name = path.parse(x).name;
+            let name = path.parse(x).name;
             if (path.extname(name).toLocaleLowerCase() == '.d')
             {
                 name = path.parse(name).name;
             }
             return name;
         });
-        for (var x of routerNames) {
+        for (const x of routerNames) {
             this._loadRouter(x);
         }
     }
@@ -183,7 +192,7 @@ export class Server<TContext, THelpers> {
         this.logger.info('Loading router %s...', name);
         const routerModule = require(path.join(this._routersDir!, name));
 
-        for (let funcName of _.keys(routerModule)) {
+        for (const funcName of _.keys(routerModule)) {
             const finalName = name + '-' + funcName;
             const routerModuleFuncAny = _.get(routerModule, funcName);
 
