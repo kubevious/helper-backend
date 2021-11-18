@@ -33,11 +33,11 @@ export class ExecutionLimiterItem
     shouldStop() : boolean
     {
         if (this._stopwatch.durationMs >= 5 * 1000) {
-            return false;
+            return true;
         }
         if (this._totalCount >= 1000) {
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 }
