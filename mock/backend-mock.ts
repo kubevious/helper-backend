@@ -1,5 +1,5 @@
 import { Promise } from 'the-promise';
-import { Backend } from '../../src';
+import { Backend } from '../src';
 
 const backend = new Backend('mock_BACKEND');
 backend.logger.info('hello from mock');

@@ -18,12 +18,13 @@
   "author": "Ruben Hakopian <ruben.hakopian@gmail.com>",
   "license": "Propriatery",
   "dependencies": {
+    "moment": "^2.29.1",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "joi": "^17.2.1",
     "morgan": "^1.10.0",
     "the-lodash": "^2.0.9",
-    "the-logger": "^2.0.9",
+    "the-logger": "^2.0.14",
     "the-promise": "^2.0.13",
     "uuid": "^8.3.0"
   },

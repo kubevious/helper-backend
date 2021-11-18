@@ -4,13 +4,15 @@ dotenv.config();
 import { ILogger, RootLogger, setupRootLogger, LoggerOptions, LogLevel } from 'the-logger';
 import { Resolvable, Promise } from 'the-promise';
 import _ from 'the-lodash';
-import { v4 as uuidv4 } from 'uuid';
+
+import { ProcessingTracker } from './processing-tracker';
+import { TimerScheduler } from './timer-scheduler';
 
 export type AnyFunction = () => Resolvable<any> 
-export type TimerFunction = () => Resolvable<any>
 export interface BackendOptions 
 {
-    logLevels?: Record<string, LogLevel>
+    logLevels?: Record<string, LogLevel>;
+    skipProcessExit?: boolean;
 }
 
 interface BackendStage
@@ -21,13 +23,16 @@ interface BackendStage
 }
 
 export class Backend {
+    private _options : BackendOptions;
     private _rootLogger: RootLogger;
     private _logger: ILogger;
-    private _timers: Record<string, NodeJS.Timeout> = {};
-    private _intervals: NodeJS.Timeout[] = [];
+
     private _errorHandler? : (reason: any) => any;
     private _exitCode = 0;
     private _stages: BackendStage[] = [];
+
+    private _timerScheduler : TimerScheduler;
+    private _tracker : ProcessingTracker;
 
     constructor(name: string, options? : BackendOptions) {
         // Process Setup
@@ -50,14 +55,14 @@ export class Backend {
         //catches uncaught exceptions
         process.on('unhandledRejection', this._unhandledRejection.bind(this));
 
-        options = options || {};
+        this._options = options || {};
 
         // Logging
         const loggerOptions = new LoggerOptions();
 
         loggerOptions.pretty(true);
 
-        let logLevel = LogLevel.info;;
+        let logLevel = LogLevel.info;
         if (process.env.LOG_LEVEL) {
             logLevel = <LogLevel>process.env.LOG_LEVEL;
         }
@@ -70,17 +75,15 @@ export class Backend {
             loggerOptions.cleanOnStart(true);
         }
 
-        if (options) {
-            if (options.logLevels) {
-                for(let name of _.keys(options.logLevels))
-                {
-                    loggerOptions.subLevel(name, options.logLevels[name]);
-                }
+        if (this._options.logLevels) {
+            for(const name of _.keys(this._options.logLevels))
+            {
+                loggerOptions.subLevel(name, this._options.logLevels[name]);
             }
         }
 
         const LogLevelOverridePrefix = 'LOG_LEVEL_'
-        for(let key of _.keys(process.env).filter(x => _.startsWith(x, LogLevelOverridePrefix)))
+        for(const key of _.keys(process.env).filter(x => _.startsWith(x, LogLevelOverridePrefix)))
         {
             const sublevelName = key.substring(LogLevelOverridePrefix.length);
             const logLevel = <LogLevel>process.env[key];
@@ -89,6 +92,11 @@ export class Backend {
 
         this._rootLogger = setupRootLogger(name, loggerOptions);
         this._logger = this._rootLogger.logger;
+
+        this._timerScheduler = new TimerScheduler(this.logger.sublogger("TimerScheduler"));
+
+        this._tracker = new ProcessingTracker(this.logger.sublogger("Tracker"), this._timerScheduler);
+        this._tracker.enablePeriodicDebugOutput();
     }
 
     get logger(): ILogger {
@@ -97,6 +105,14 @@ export class Backend {
 
     get rootLogger() {
         return this._rootLogger;
+    }
+
+    get timerScheduler() {
+        return this._timerScheduler;
+    }
+
+    get tracker() : ProcessingTracker {
+        return this._tracker;
     }
 
     stage(name: string, setup: AnyFunction, options?: {
@@ -130,7 +146,7 @@ export class Backend {
 
     initialize(cb : AnyFunction)
     {
-        this.logger.error('[DEPRECATED] use backend.stage and backend.run instead.');;
+        this.logger.error('[DEPRECATED] use backend.stage and backend.run instead.');
         this.execute('initialize', cb, (reason) => {
             this.logger.error('[initialize] FAILED. Application will now exit. Reason: ', reason);
             this._handleError(reason);
@@ -162,31 +178,16 @@ export class Backend {
 
     close() {
         console.log('[Backend::close]');
-        this._terminateTimers();
+        
+        this._tracker.close();
+        this._timerScheduler.close();
+
         process.stdin.pause();
         // this._rootLogger.close();
-        process.exit(this._exitCode);
-    }
 
-    timer(timeout: number, cb: TimerFunction)
-    {
-        const id = uuidv4();
-        
-        const timerObj = setTimeout(() => {
-            delete this._timers[id];
-            this._triggerCallback(cb);
-        }, timeout);
-
-        this._timers[id] = timerObj;
-    }
-
-    interval(timeout: number, cb: TimerFunction)
-    {
-        const timerObj = setInterval(() => {
-            this._triggerCallback(cb);
-        }, timeout);
-
-        this._intervals.push(timerObj);
+        if (!this._options.skipProcessExit) {
+            process.exit(this._exitCode);
+        }
     }
 
     private _uncaughtException(reason: any)
@@ -225,47 +226,15 @@ export class Backend {
             .then(() => null);
     }
 
-    private _triggerCallback(cb: TimerFunction)
-    {
-        try
-        {
-            Promise.try(cb)
-                .catch(reason => {
-                    this._logger.error("Failed in timer. ", reason);
-                    return null;
-                })
-                .then(() => null);
-        }
-        catch(reason)
-        {
-            this._logger.error("Failed in timer. ", reason);
-        }
-    }
-
-    private _terminateTimers()
-    {
-        for(let timerObj of this._intervals)
-        {
-            clearInterval(timerObj);
-        }
-        this._intervals = [];
-
-        for(let id of _.keys(this._timers))
-        {
-            clearTimeout(this._timers[id]);
-        }
-        this._timers = {};
-    }
-
     private _exitHandler(options: EventOptions, exitCode: any) {
-        console.log('[Backend::_exitHandler] event: %s', options.event);
+        console.log('[Backend::_exitHandler] event: ', options.event);
 
         if (options.cleanup) {
             console.log('[Backend::_exitHandler] cleanup');
         }
 
         if (exitCode || exitCode === 0) {
-            console.log('[Backend::_exitHandler] exiting with: %s' + exitCode);
+            console.log('[Backend::_exitHandler] exiting with: ', exitCode);
         }
 
         if (options.exit) {

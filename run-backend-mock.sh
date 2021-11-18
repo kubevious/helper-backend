@@ -6,4 +6,4 @@ cd $MY_DIR
 export TS_NODE_COMPILER_OPTIONS="{\"module\": \"commonjs\" }"
 
 npm run build
-tsc tsc/backend/mock.ts
+tsc mock/backend-mock.ts
