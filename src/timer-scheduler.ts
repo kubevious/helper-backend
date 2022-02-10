@@ -10,7 +10,6 @@ export class TimerScheduler
 {
     private _logger : ILogger;
     private _timers: Record<string, TimerInfo> = {};
-    private _intervals: Record<string, TimerInfo> = {};
 
     constructor(logger : ILogger)
     {
@@ -32,6 +31,7 @@ export class TimerScheduler
         const timerInfo : TimerInfo = {
             id: id,
             name: name,
+            isEnabled: true,
             handle: timerObj
         }
 
@@ -42,8 +42,12 @@ export class TimerScheduler
                 this._logger.info("[timer::close] %s, id: %s", name, id);
                 const info = this._timers[id];
                 if (info) {
+                    info.isEnabled = false;
                     delete this._timers[id];
-                    clearTimeout(info.handle);
+                    if (info.handle) {
+                        clearTimeout(info.handle);
+                        delete info.handle;
+                    }
                 }
             }
         }
@@ -55,25 +59,37 @@ export class TimerScheduler
 
         const id = uuidv4();
 
-        const timerObj = setInterval(() => {
-            this._triggerCallback(cb);
-        }, timeoutMs);
-
         const timerInfo : TimerInfo = {
             id: id,
             name: name,
-            handle: timerObj
+            isEnabled: true
+            // handle: timerObj
         }
+        this._timers[id] = timerInfo;
 
-        this._intervals[id] = timerInfo;
+        const scheduleTimer = () => {
+            if (!timerInfo.isEnabled) {
+                return;
+            }
+
+            timerInfo.handle = setTimeout(() => {
+                this._triggerCallback(cb, () => {
+                    scheduleTimer();
+                });
+            }, timeoutMs);
+        };
 
         return {
             close: () => {
                 this._logger.info("[interval::close] %s, id: %s", name, id);
-                const info = this._intervals[id];
+                const info = this._timers[id];
                 if (info) {
-                    delete this._intervals[id];
-                    clearInterval(info.handle);
+                    delete this._timers[id];
+                    info.isEnabled = false;
+                    if (info.handle) {
+                        clearTimeout(info.handle);
+                        delete info.handle;
+                    }
                 }
             }
         }
@@ -83,24 +99,20 @@ export class TimerScheduler
     {
         this._logger.info('[close]');
 
-        for(const id of _.keys(this._intervals))
-        {
-            const info = this._intervals[id];
-            this._logger.info('[close] clearInterval: %s', info.handle);
-            clearInterval(info.handle);
-        }
-        this._intervals = {};
-
         for(const id of _.keys(this._timers))
         {
-            const info = this._intervals[id];
+            const info = this._timers[id];
+            info.isEnabled = false;
             this._logger.info('[close] clearTimeout: %s', info.handle);
-            clearTimeout(info.handle);
+            if (info.handle) {
+                clearTimeout(info.handle);
+                delete info.handle;
+            }
         }
         this._timers = {};
     }
 
-    private _triggerCallback(cb: TimerFunction)
+    private _triggerCallback(cb: TimerFunction, onFinish? : () => void)
     {
         try
         {
@@ -110,11 +122,19 @@ export class TimerScheduler
                     this._logger.error("Failed in timer. ", reason);
                     return null;
                 })
-                .then(() => null);
+                .then(() => {
+                    if (onFinish) {
+                        onFinish();
+                    }
+                    return null;
+                });
         }
         catch(reason)
         {
             this._logger.error("Failed in timer. ", reason);
+            if (onFinish) {
+                onFinish();
+            }
         }
     }
 
@@ -125,7 +145,8 @@ interface TimerInfo
 {
     id: string;
     name: string;
-    handle: NodeJS.Timeout;
+    isEnabled: boolean;
+    handle?: NodeJS.Timeout;
 }
 
 export interface TimerObject
