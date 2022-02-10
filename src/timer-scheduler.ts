@@ -78,6 +78,7 @@ export class TimerScheduler
                 });
             }, timeoutMs);
         };
+        scheduleTimer();
 
         return {
             close: () => {

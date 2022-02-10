@@ -56,7 +56,7 @@ describe('backend', () => {
     });
 
 
-    it('interval', () => {
+    it('interval-short', () => {
         const backend = new Backend('my-backend', { skipProcessExit: true });
         backend.logger.info('hello world');
 
@@ -71,7 +71,7 @@ describe('backend', () => {
                 return Promise.timeout(10);
             });
 
-        return Promise.timeout(1050)
+        return Promise.timeout(1150)
             .then(() => {
                 should(count).be.equal(10);
             })
