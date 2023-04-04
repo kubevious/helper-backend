@@ -1,8 +1,8 @@
 import 'mocha';
-import should = require('should');
+import should from 'should';
 
 import _ from 'the-lodash';
-import { Promise } from 'the-promise';
+import { MyPromise } from 'the-promise';
 import { setupLogger, LoggerOptions } from 'the-logger';
 
 const loggerOptions = new LoggerOptions().enableFile(false).pretty(true);
@@ -17,7 +17,7 @@ describe('processing-tracker', function() {
         const processingTracker = new ProcessingTracker(logger, scheduler);
 
         return processingTracker.scope("doSomething", () => {
-            return Promise.timeout(200);
+            return MyPromise.delay(200);
         })
         .then(() => {
             {
@@ -39,9 +39,9 @@ describe('processing-tracker', function() {
         const processingTracker = new ProcessingTracker(logger, scheduler);
 
         return processingTracker.scope("doSomething", (doSomethingScope) => {
-            return Promise.timeout(100)
+            return MyPromise.delay(100)
                 .then(() => doSomethingScope.scope("another", () => {
-                    return Promise.timeout(300);
+                    return MyPromise.delay(300);
                 }));
         })
         .then(() => {
@@ -72,7 +72,7 @@ describe('processing-tracker', function() {
         const processingTracker = new ProcessingTracker(logger, scheduler);
 
         return processingTracker.scope("doSomething", () => {
-            return Promise.timeout(100)
+            return MyPromise.delay(100)
                 .then(() => { throw new Error("FAILED!!!") })
         })
         .then(() => {
@@ -99,7 +99,7 @@ describe('processing-tracker', function() {
         const processingTracker = new ProcessingTracker(logger, scheduler);
 
         return processingTracker.scope("doSomething", () => {
-            return Promise.timeout(100)
+            return MyPromise.delay(100)
                 .then(() => 1234)
         })
         .then(result => { 
@@ -131,9 +131,9 @@ describe('processing-tracker', function() {
 
         return processingTracker.scope("doSomething", (childTracker) => {
 
-            return Promise.serial([1, 2, 3, 4], x => {
+            return MyPromise.serial([1, 2, 3, 4], x => {
                 return childTracker.scope("ITEM-" + x, () => {
-                    return Promise.timeout(100)
+                    return MyPromise.delay(100)
                         .then(() => x + 1);
                 })
             })
@@ -157,9 +157,9 @@ describe('processing-tracker', function() {
         const scheduler = new TimerScheduler(logger.sublogger("Scheduler"));
         const processingTracker = new ProcessingTracker(logger, scheduler);
 
-        return Promise.serial([1, 2, 3, 4, 5, 6, 7, 8], x => {
+        return MyPromise.serial([1, 2, 3, 4, 5, 6, 7, 8], x => {
             return processingTracker.scope("doSomething", (childTracker) => {
-                return Promise.timeout(x * 10);
+                return MyPromise.delay(x * 10);
             });
         })
         .then(() => {

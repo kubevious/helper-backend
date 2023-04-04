@@ -1,6 +1,6 @@
 import _ from 'the-lodash';
 import { ILogger } from 'the-logger' ;
-import { Promise, Resolvable } from 'the-promise';
+import { MyPromise, Resolvable } from 'the-promise';
 
 import { v4 as uuidv4 } from 'uuid';
 

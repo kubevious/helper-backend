@@ -2,7 +2,7 @@ import { Request, Response, Router as ExpressRouter, IRouterMatcher, NextFunctio
 import { AnySchema as JoiSchema } from 'joi';
 import { ILogger } from 'the-logger';
 import _ from 'the-lodash';
-import { Promise, Resolvable } from 'the-promise';
+import { MyPromise, Resolvable } from 'the-promise';
 import { MiddlewareCallbackFunc, MiddlewarePromiseFunc, MiddlewareRef } from './server';
 import { RouterError, ErrorReporter } from './router-error';
 import { RouterScope } from './router-scope';
@@ -12,7 +12,7 @@ export interface ParamsDictionary {
     [key: string]: string;
 }
 
-export type Handler<TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals = any> = 
+export type Handler<TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals extends Record<string, any> = Record<string, any>> = 
     (req: Request<TReqParams, any, TReqBody, TReqQuery, TLocals>, res: Response<any, TLocals>) => Resolvable<any>;
 
 export class Router {
@@ -56,7 +56,7 @@ export class Router {
     }
 
     get
-    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals = any>
+    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals extends Record<string, any> = Record<string, any> >
     (url: string, handler: Handler<TReqParams, TReqBody, TReqQuery, TLocals>)
     : RouteWrapper<TReqParams, TReqBody, TReqQuery, TLocals>
     {
@@ -64,7 +64,7 @@ export class Router {
     }
 
     post
-    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals = any>
+    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals extends Record<string, any> = Record<string, any>>
     (url: string, handler: Handler<TReqParams, TReqBody, TReqQuery, TLocals>)
     : RouteWrapper<TReqParams, TReqBody, TReqQuery, TLocals>
     {
@@ -72,7 +72,7 @@ export class Router {
     }
 
     put
-    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals = any>
+    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals extends Record<string, any> = Record<string, any>>
     (url: string, handler: Handler<TReqParams, TReqBody, TReqQuery, TLocals>)
     : RouteWrapper<TReqParams, TReqBody, TReqQuery, TLocals>
     {
@@ -80,7 +80,7 @@ export class Router {
     }
 
     delete
-    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals = any>
+    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals extends Record<string, any> = Record<string, any>>
     (url: string, handler: Handler<TReqParams, TReqBody, TReqQuery, TLocals>)
     : RouteWrapper<TReqParams, TReqBody, TReqQuery, TLocals>
     {
@@ -88,7 +88,7 @@ export class Router {
     }
 
     head
-    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals = any>
+    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals extends Record<string, any> = Record<string, any>>
     (url: string, handler: Handler<TReqParams, TReqBody, TReqQuery, TLocals>)
     : RouteWrapper<TReqParams, TReqBody, TReqQuery, TLocals>
     {
@@ -96,7 +96,7 @@ export class Router {
     }
 
     options
-    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals = any>
+    <TReqParams = ParamsDictionary, TReqBody = any, TReqQuery = any, TLocals extends Record<string, any> = Record<string, any>>
     (url: string, handler: Handler<TReqParams, TReqBody, TReqQuery, TLocals>)
     : RouteWrapper<TReqParams, TReqBody, TReqQuery, TLocals>
     {
@@ -111,7 +111,7 @@ export class Router {
         this._errorReporter.reportUserError(message);
     }
 
-    private _setupRoute<TReqParams, TReqBody, TReqQuery, TLocals>
+    private _setupRoute<TReqParams, TReqBody, TReqQuery, TLocals extends Record<string, any> = Record<string, any>>
         (url: string, 
          handler: Handler<TReqParams, TReqBody, TReqQuery, TLocals>,
          method: string,
@@ -169,7 +169,7 @@ export class Router {
         const middlewareHandler = 
             (req: Request, res: Response, next: NextFunction) => 
             {
-                Promise.try(() => {
+                MyPromise.try(() => {
                         return middleware(req, res)
                     })
                     .then(() => {
@@ -187,7 +187,7 @@ export class Router {
 
 }
 
-class RouteHandler<TReqParams, TReqBody, TReqQuery, TLocals>
+class RouteHandler<TReqParams, TReqBody, TReqQuery, TLocals extends Record<string, any> = Record<string, any>>
 {
     private _logger: ILogger;
     private _name: string;
@@ -285,7 +285,7 @@ class RouteHandler<TReqParams, TReqBody, TReqQuery, TLocals>
 
 }
 
-export class RouteWrapper<TReqParams, TReqBody, TReqQuery, TLocals>
+export class RouteWrapper<TReqParams, TReqBody, TReqQuery, TLocals extends Record<string, any> = Record<string, any>>
 {
     private _handler: RouteHandler<TReqParams, TReqBody, TReqQuery, TLocals>;
 

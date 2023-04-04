@@ -1,5 +1,5 @@
 import 'mocha';
-import should = require('should');
+import should from 'should';
 import { setupLogger, LoggerOptions } from 'the-logger';
 import { Server } from '../../src';
 import { Context } from './context';

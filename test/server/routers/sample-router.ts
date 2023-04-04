@@ -1,6 +1,5 @@
 import { Context } from '../context';
 import { Router } from '../../../src';
-import { Promise } from 'the-promise';
 
 import Joi from 'joi';
 

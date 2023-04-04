@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { ILogger, RootLogger, setupRootLogger, LoggerOptions, LogLevel } from 'the-logger';
-import { Resolvable, Promise } from 'the-promise';
+import { Resolvable, MyPromise } from 'the-promise';
 import _ from 'the-lodash';
 
 import { ProcessingTracker } from './processing-tracker';
@@ -133,7 +133,7 @@ export class Backend {
     {
         this.execute('run', () => {
 
-            return Promise.serial(this._stages, x => {
+            return MyPromise.serial(this._stages, x => {
                 this.logger.info("[run] stage: %s begin...", x.name);
                 return x.setup();
             })
@@ -156,7 +156,7 @@ export class Backend {
     execute(name: string, cb : AnyFunction, handleError?: (reason: any) => void)
     {
         this.logger.info('[execute] %s :: Begin.', name);
-        Promise.try(cb)
+        MyPromise.try(cb)
             .then(() => {
                 this.logger.info('[execute] %s :: End.', name);
                 return null;

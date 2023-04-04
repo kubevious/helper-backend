@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import _ from 'the-lodash';
 import { ILogger } from 'the-logger';
-import { Promise } from 'the-promise';
+import { MyPromise } from 'the-promise';
 import { Router } from './router';
 import { RouterScope } from './router-scope';
 import { MiddlewareRegistry } from './middleware-registry';
@@ -23,13 +23,13 @@ export type ExpressAppFunc = (app: Express) => void;
 export type MiddlewareName = string;
 export type MiddlewareRef = MiddlewareCallbackFunc | MiddlewareName;
 
-export type MiddlewareCallbackFunc<TLocals = any> = (req: Request, res: Response<any, TLocals>, next: NextFunction) => void;
-export type MiddlewarePromiseFunc<TLocals = any> = (req: Request, res: Response<any, TLocals>) => Promise<any> | void;
+export type MiddlewareCallbackFunc<TLocals extends Record<string, any> = Record<string, any>> = (req: Request, res: Response<any, TLocals>, next: NextFunction) => void;
+export type MiddlewarePromiseFunc<TLocals extends Record<string, any> = Record<string, any>> = (req: Request, res: Response<any, TLocals>) => Promise<any> | void;
 
 export type BaseMiddlewareArgs = { logger: ILogger, errorReporter: ErrorReporter };
 export type MiddlewareBuilderArgs<TCustom = {}> = TCustom & BaseMiddlewareArgs;
-export type MiddlewareFunctionBuilder<TCustom = {}, TLocals = any> = (args: MiddlewareBuilderArgs<TCustom>) => MiddlewareCallbackFunc<TLocals>;
-export type MiddlewarePromiseBuilder<TCustom = {}, TLocals = any> = (args: MiddlewareBuilderArgs<TCustom>) => MiddlewarePromiseFunc<TLocals>;
+export type MiddlewareFunctionBuilder<TCustom = {}, TLocals extends Record<string, any> = Record<string, any>> = (args: MiddlewareBuilderArgs<TCustom>) => MiddlewareCallbackFunc<TLocals>;
+export type MiddlewarePromiseBuilder<TCustom = {}, TLocals extends Record<string, any> = Record<string, any>> = (args: MiddlewareBuilderArgs<TCustom>) => MiddlewarePromiseFunc<TLocals>;
 
 export interface ServerParams
 {
@@ -111,12 +111,16 @@ export class Server<TContext, THelpers> {
         this._isDev = true;
     }
 
-    middleware<TCustom = {}, TLocals = any>(name: MiddlewareName, middleware: MiddlewareCallbackFunc<TLocals>, params: TCustom) {
-        this._middlewareRegistry.addFunc(name, middleware);
+    middleware<TCustom = {}, TLocals extends Record<string, any> = Record<string, any>>
+        (name: MiddlewareName, middleware: MiddlewareCallbackFunc<TLocals>, params: TCustom)
+    {
+        this._middlewareRegistry.addFunc(name, middleware as any);
     }
 
-    middlewareP<TCustom = {}, TLocals = any>(name: MiddlewareName, middleware: MiddlewarePromiseFunc<TLocals>, params: TCustom) {
-        this._middlewareRegistry.addPromise(name, middleware);
+    middlewareP<TCustom = {}, TLocals extends Record<string, any> = Record<string, any>>
+        (name: MiddlewareName, middleware: MiddlewarePromiseFunc<TLocals>, params: TCustom)
+    {
+        this._middlewareRegistry.addPromise(name, middleware as any);
     }
 
     initializer(cb: ExpressAppFunc) {
@@ -151,7 +155,7 @@ export class Server<TContext, THelpers> {
             this._app.use(express.static(this._serverParams.staticHostingPath));
         }
 
-        return Promise.construct((resolve, reject) => {
+        return MyPromise.construct((resolve, reject) => {
             this._httpServer = this._app.listen(this._port, () => {
                 this.logger.info('Listening on port %s', this._port);
                 resolve(this);

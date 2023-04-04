@@ -1,6 +1,6 @@
 import _ from 'the-lodash';
 import { ILogger } from 'the-logger' ;
-import { Promise, Resolvable } from 'the-promise';
+import { Resolvable } from 'the-promise';
 import { StopWatch } from './stopwatch';
 import { TimerObject, TimerScheduler } from './timer-scheduler';
 

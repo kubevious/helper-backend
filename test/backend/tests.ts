@@ -1,7 +1,7 @@
 import 'mocha';
-import should = require('should');
+import should from 'should';
 import { Backend } from '../../src';
-import { Promise } from 'the-promise';
+import { MyPromise } from 'the-promise';
 import { LogLevel } from 'the-logger';
 
 describe('backend', () => {
@@ -43,10 +43,10 @@ describe('backend', () => {
             100, 
             () => {
                 count++;
-                return Promise.timeout(10);
+                return MyPromise.delay(10);
             });
 
-        return Promise.timeout(1050)
+        return MyPromise.delay(1050)
             .then(() => {
                 should(count).be.equal(1);
             })
@@ -68,10 +68,10 @@ describe('backend', () => {
             () => {
                 console.log("[Interval] Triggered")
                 count++;
-                return Promise.timeout(10);
+                return MyPromise.delay(10);
             });
 
-        return Promise.timeout(1150)
+        return MyPromise.delay(1150)
             .then(() => {
                 should(count).be.equal(10);
             })
