@@ -133,15 +133,27 @@ export class Backend {
     {
         this.execute('run', () => {
 
-            return MyPromise.serial(this._stages, x => {
-                this.logger.info("[run] stage: %s begin...", x.name);
-                return x.setup();
-            })
+            return MyPromise.serial(this._stages, x => this._runStage(x));
 
         }, (reason) => {
             this.logger.error('[run] FAILED. Application will now exit. Reason: ', reason);
             this._handleError(reason);
         })
+    }
+
+    private async _runStage(stage: BackendStage)
+    {
+        try
+        {
+            this.logger.info("[run] stage: %s. Begin", stage.name);
+            await stage.setup();
+            this.logger.info("[run] stage: %s. End", stage.name);
+        }
+        catch(reason: any)
+        {
+            this.logger.error('[run] stage: %s Failed. Reason: ', reason);
+            throw reason;
+        }
     }
 
     initialize(cb : AnyFunction)
