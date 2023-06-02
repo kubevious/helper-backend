@@ -173,12 +173,20 @@ export class Server<TContext, THelpers> {
         }
     }
 
-    private _loadRouters() {
+    private _loadRouters()
+    {
         if (!this._routersDir) {
             return;
         }
+
+        function isRouterIncluded(filePath: string)
+        {
+            const ext = path.extname(filePath).toLocaleLowerCase();
+            return (ext === '.ts') || (ext === '.js');
+        }
+        
         let routerNames = fs.readdirSync(this._routersDir);
-        routerNames = routerNames.filter((x) => path.extname(x).toLocaleLowerCase() == '.ts');
+        routerNames = routerNames.filter((x) => isRouterIncluded(x));
         routerNames = routerNames.map((x) => {
             let name = path.parse(x).name;
             if (path.extname(name).toLocaleLowerCase() == '.d')
