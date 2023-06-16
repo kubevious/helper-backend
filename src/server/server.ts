@@ -13,6 +13,7 @@ import { MiddlewareRegistry } from './middleware-registry';
 
 import { ExecutionLimiter } from '../execution-limiter';
 
+import { glob } from 'glob';
 import dotenv from 'dotenv';
 import { ErrorReporter } from './router-error';
 dotenv.config();
@@ -127,7 +128,7 @@ export class Server<TContext, THelpers> {
         this._appInitCb = cb;
     }
 
-    run(): Promise<Server<TContext, THelpers>> {
+    async run(): Promise<Server<TContext, THelpers>> {
         this._logger.info("[run] isDev=%s", this._isDev);
 
         if (this._isDev) {
@@ -140,7 +141,7 @@ export class Server<TContext, THelpers> {
             this._appInitCb!(this._app);
         }
 
-        this._loadRouters();
+        await this._loadRouters();
 
         this._app.use((err: any, req: Request, res: Response, next: NextFunction) => {
             if (err) {
@@ -173,28 +174,29 @@ export class Server<TContext, THelpers> {
         }
     }
 
-    private _loadRouters()
+    private async _loadRouters()
     {
         if (!this._routersDir) {
             return;
         }
 
-        function isRouterIncluded(filePath: string)
+        function removeExtension(filePath: string, extToRemove: string)
         {
-            const ext = path.extname(filePath).toLocaleLowerCase();
-            return (ext === '.ts') || (ext === '.js');
+            const myPath = path.parse(filePath);
+            const ext = myPath.ext.toLocaleLowerCase();
+            if (ext == extToRemove)
+            {
+                return filePath.substring(0, filePath.length - extToRemove.length);
+            }
+            return filePath;
         }
         
-        let routerNames = fs.readdirSync(this._routersDir);
-        routerNames = routerNames.filter((x) => isRouterIncluded(x));
-        routerNames = routerNames.map((x) => {
-            let name = path.parse(x).name;
-            if (path.extname(name).toLocaleLowerCase() == '.d')
-            {
-                name = path.parse(name).name;
-            }
-            return name;
-        });
+        let routerNames = await glob('**/*.{ts,js}', { cwd: this._routersDir});
+        routerNames = routerNames.map((x) => removeExtension(x, '.ts'));
+        routerNames = routerNames.map((x) => removeExtension(x, '.js'));
+        routerNames = routerNames.map((x) => removeExtension(x, '.d'));
+        routerNames = _.uniq(routerNames);
+        
         for (const x of routerNames) {
             this._loadRouter(x);
         }

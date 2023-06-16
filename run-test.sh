@@ -5,4 +5,4 @@ cd $MY_DIR
 
 export LOG_LEVEL_mock_BACKEND=silly
 
-npm test ${@}
+npm test $@

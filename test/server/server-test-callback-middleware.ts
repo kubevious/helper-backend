@@ -17,7 +17,7 @@ let globalServer: Server<Context, any> | null;
 
 describe('server-test-callback-middleware', () => {
     beforeEach(() => {
-        let routersPath = path.join(__dirname, 'routers');
+        const routersPath = path.join(__dirname, 'routers');
         globalServer = new Server(logger, new Context(), '', { port: PORT, routersDir: routersPath });
 
         globalServer.middleware<{}, RequestLocals>('CHECK_USER', 

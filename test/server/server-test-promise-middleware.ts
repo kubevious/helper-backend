@@ -17,7 +17,7 @@ let globalServer: Server<Context, any> | null;
 
 describe('server-test-promise-middleware', () => {
     beforeEach(() => {
-        let routersPath = path.join(__dirname, 'routers');
+        const routersPath = path.join(__dirname, 'routers');
         globalServer = new Server(logger, new Context(), '', { port: PORT, routersDir: routersPath });
 
         globalServer.middlewareP<{}, RequestLocals>('CHECK_USER',
@@ -50,6 +50,13 @@ describe('server-test-promise-middleware', () => {
             should(result.data).be.equal('foo-bar');
         });
     });
+
+    it('case-03-nested', () => {
+        return axios.get(`${BASE_URL}/nested/version`).then((result) => {
+            should(result.data).be.equal(6789);
+        });
+    });
+
 
     it('body-validation-pass', () => {
         return axios.post(`${BASE_URL}/bar`, { foo: 'bar', age: 1234 }).then((result) => {
