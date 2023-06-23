@@ -223,7 +223,8 @@ export class Server<TContext, THelpers> {
     private _loadRouterFunction(name: string, routerModuleFunc: RouterFunc<TContext, THelpers>) {
         const expressRouter = express.Router();
 
-        const logger = this.logger.sublogger('Router_' + name);
+        const loggerName = `Router_${name}`.replace(/[\\/]/g, "_");
+        const logger = this.logger.sublogger(loggerName);
 
         const routerScope = new RouterScope();
         const router = new Router(name, this._isDev, expressRouter, logger, routerScope, this._middlewareRegistry);
