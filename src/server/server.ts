@@ -231,6 +231,8 @@ export class Server<TContext, THelpers> {
 
         routerModuleFunc(router, this.context, logger, this._helpers);
 
+        this.logger.info('Setting up express router. Url: %s', routerScope.url);
+
         this._app.use(routerScope.url, routerScope.middlewares, expressRouter);
     }
 }
